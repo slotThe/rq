@@ -1,0 +1,13 @@
+*~
+#*#
+flycheck_*.el
+.projectile
+/.direnv/
+/target/
+*.rs.bk
+Cargo.lock
+
+
+# Added by cargo
+
+/target
