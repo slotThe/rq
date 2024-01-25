@@ -12,7 +12,14 @@ use serde_json::Value;
 
 const NULL: Expr = Expr::Const(Const::Null);
 
-fn json_to_val(data: &str) -> serde_json::Result<Value> { serde_json::from_str(data) }
+fn main() -> Result<()> {
+  let arg = env::args().nth(1);
+  if arg.is_none() || arg == Some("repl".to_string()) {
+    repl()
+  } else {
+    oneshot()
+  }
+}
 
 fn repl() -> Result<()> {
   let mut buffer = String::new();
@@ -48,11 +55,11 @@ fn repl() -> Result<()> {
   Ok(())
 }
 
-fn main() -> Result<()> {
+fn oneshot() -> Result<()> {
   let mut input = String::new();
   io::stdin().read_to_string(&mut input)?;
 
-  let json = json_to_val(&input)?;
+  let json: Value = serde_json::from_str(&input)?;
   println!("Json: {json}");
 
   let input_expr = &env::args().collect::<Vec<_>>()[1];
