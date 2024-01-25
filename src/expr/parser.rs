@@ -35,10 +35,11 @@ fn p_var(input: &str) -> IResult<&str, Var> {
 
 /// Parse an array.
 fn p_array(input: &str) -> IResult<&str, Expr> {
-  let (input, _) = lexeme(tag("["))(input)?;
-  let (input, xs) = separated_list1(lexeme(tag(",")), p_expr)(input)?;
-  let (input, _) = lexeme(tag("]"))(input)?;
-  Ok((input, Expr::Arr(xs)))
+  delimited(
+    lexeme(tag("[")),
+    map(separated_list1(lexeme(tag(",")), p_expr), Expr::Arr),
+    lexeme(tag("]")),
+  )(input)
 }
 
 /// Parse an object.
@@ -48,10 +49,14 @@ fn p_obj(input: &str) -> IResult<&str, Expr> {
     let (input, v) = p_expr(input)?;
     Ok((input, (k.to_string(), v)))
   };
-  let (input, _) = lexeme(tag("{"))(input)?;
-  let (input, o) = separated_list1(lexeme(tag(",")), p_kv)(input)?;
-  let (input, _) = lexeme(tag("}"))(input)?;
-  Ok((input, Expr::Obj(o.into_iter().collect())))
+  map(
+    delimited(
+      lexeme(tag("{")),
+      separated_list1(lexeme(tag(",")), p_kv),
+      lexeme(tag("}")),
+    ),
+    |o| Expr::Obj(o.into_iter().collect()),
+  )(input)
 }
 
 /// Parse a string. FIXME: This is probably bad.
@@ -66,17 +71,13 @@ fn p_str(input: &str) -> IResult<&str, &str> {
 /// Parse a lambda.
 fn p_lam(input: &str) -> IResult<&str, Expr> {
   let haskell_head = |input| {
-    let (input, _) = lalt((tag("\\"), tag("λ")))(input)?;
-    let (input, head) = p_var(input)?;
-    let (input, _) = lalt((tag("->"), tag("→")))(input)?;
-    Ok((input, head))
+    delimited(
+      lalt((tag("\\"), tag("λ"))),
+      p_var,
+      lalt((tag("->"), tag("→"))),
+    )(input)
   };
-  let rust_head = |input| {
-    let (input, _) = lexeme(tag("|"))(input)?;
-    let (input, head) = p_var(input)?;
-    let (input, _) = lexeme(tag("|"))(input)?;
-    Ok((input, head))
-  };
+  let rust_head = |input| delimited(lexeme(tag("|")), p_var, lexeme(tag("|")))(input);
   let res = try_parens(|input| {
     let (input, head) = lalt((haskell_head, rust_head))(input)?;
     let (input, body) = p_expr(input)?;
