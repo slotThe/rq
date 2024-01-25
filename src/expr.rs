@@ -5,12 +5,12 @@ pub mod json;
 pub mod parser;
 pub mod test;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Const {
   Num(f64),
   Bool(bool),
   Null,
-  // TODO: String
+  String(String),
 }
 
 impl Display for Const {
@@ -19,6 +19,7 @@ impl Display for Const {
       Const::Num(n) => write!(f, "{n}"),
       Const::Bool(b) => write!(f, "{b}"),
       Const::Null => write!(f, "null"),
+      Const::String(s) => write!(f, "{s}"),
     }
   }
 }

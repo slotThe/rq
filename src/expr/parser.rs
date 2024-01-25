@@ -19,6 +19,7 @@ fn p_const(input: &str) -> IResult<&str, Expr> {
       map(tag("null"), |_| Const::Null),
       map(p_bool, Const::Bool),
       map(double, Const::Num),
+      map(p_str, |s| Const::String(s.to_string())),
     )),
     Expr::Const,
   )(input)

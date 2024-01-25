@@ -7,9 +7,9 @@ pub fn json_to_dexpr(json: &Value) -> DExpr {
     Value::Null => DExpr::Const(Const::Null),
     Value::Bool(b) => DExpr::Const(Const::Bool(*b)),
     Value::Number(n) => DExpr::Const(Const::Num(
-      n.as_f64().expect("Number does not fit inside f64"),
+      n.as_f64().expect("Number does not fit inside f64"), // FIXME
     )),
-    Value::String(_) => todo!(),
+    Value::String(s) => DExpr::Const(Const::String(s.to_owned())),
     Value::Array(xs) => DExpr::Arr(xs.iter().map(json_to_dexpr).collect()),
     Value::Object(hm) => DExpr::Obj(
       hm.iter()
