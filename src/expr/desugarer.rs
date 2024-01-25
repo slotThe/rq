@@ -19,7 +19,7 @@ impl Display for DExpr {
       DExpr::Const(c) => write!(f, "{c}"),
       DExpr::Var(v) => write!(f, "{v}"),
       DExpr::Lam(v, b) => write!(f, "λ{v}. {b}"),
-      DExpr::App(g, x) => write!(f, "({g})[{x}]"),
+      DExpr::App(g, x) => write!(f, "({g})⟨{x}⟩"),
       DExpr::Arr(xs) => fmt_array(xs, f),
       DExpr::Obj(hm) => fmt_object(hm, f),
     }

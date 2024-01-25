@@ -47,7 +47,7 @@ impl Display for Expr {
       Expr::Const(c) => write!(f, "{c}"),
       Expr::Var(v) => write!(f, "{v}"),
       Expr::Lam(v, b) => write!(f, "λ{v}. {b}"),
-      Expr::App(g, x) => write!(f, "({g})[{x}]"),
+      Expr::App(g, x) => write!(f, "({g})⟨{x}⟩"),
       Expr::Arr(xs) => fmt_array(xs, f),
       Expr::Obj(hm) => fmt_object(hm, f),
     }
@@ -60,7 +60,7 @@ fn fmt_object<T: Display>(
 ) -> fmt::Result {
   write!(
     f,
-    "{{{}}}",
+    "{{ {} }}",
     hm.iter()
       .map(|(k, v)| k.to_owned() + ": " + &v.to_string())
       .intersperse(", ".to_string())
@@ -71,7 +71,7 @@ fn fmt_object<T: Display>(
 fn fmt_array<T: Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
   write!(
     f,
-    "[{}]",
+    "[ {} ]",
     xs.iter()
       .map(|x| x.to_string())
       .intersperse(", ".to_string())
