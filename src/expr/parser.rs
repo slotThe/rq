@@ -1,5 +1,5 @@
 use anyhow::Result;
-use nom::{self, branch::{alt, Alt}, bytes::complete::tag, character::complete::{alpha1, alphanumeric0, multispace0, multispace1}, combinator::{all_consuming, map}, error::ParseError, multi::separated_list1, number::complete::double, sequence::{delimited, pair}, AsChar, Finish, IResult, InputTakeAtPosition, Parser};
+use nom::{self, branch::{alt, Alt}, bytes::complete::{escaped, tag}, character::complete::{alpha1, alphanumeric0, alphanumeric1, multispace0, multispace1, one_of}, combinator::{all_consuming, map}, error::ParseError, multi::separated_list1, number::complete::double, sequence::{delimited, pair, terminated}, AsChar, Finish, IResult, InputTakeAtPosition, Parser};
 
 use crate::expr::{Const, Expr, Var};
 
@@ -8,7 +8,7 @@ pub fn parse(inp: &str) -> Result<Expr, nom::error::Error<&str>> {
 }
 
 fn p_expr(input: &str) -> IResult<&str, Expr> {
-  lalt((p_array, p_app, p_lam, p_const, map(p_var, Expr::Var)))(input)
+  lalt((p_array, p_obj, p_app, p_lam, p_const, map(p_var, Expr::Var)))(input)
 }
 
 /// Parse a constant expression.
@@ -38,6 +38,28 @@ fn p_array(input: &str) -> IResult<&str, Expr> {
   let (input, xs) = separated_list1(lexeme(tag(",")), p_expr)(input)?;
   let (input, _) = lexeme(tag("]"))(input)?;
   Ok((input, Expr::Arr(xs)))
+}
+
+/// Parse an object.
+fn p_obj(input: &str) -> IResult<&str, Expr> {
+  let p_kv = |input| -> IResult<&str, (String, Expr)> {
+    let (input, k) = terminated(p_str, lexeme(tag(":")))(input)?;
+    let (input, v) = p_expr(input)?;
+    Ok((input, (k.to_string(), v)))
+  };
+  let (input, _) = lexeme(tag("{"))(input)?;
+  let (input, o) = separated_list1(lexeme(tag(",")), p_kv)(input)?;
+  let (input, _) = lexeme(tag("}"))(input)?;
+  Ok((input, Expr::Obj(o.into_iter().collect())))
+}
+
+/// Parse a string. FIXME: This is probably bad.
+fn p_str(input: &str) -> IResult<&str, &str> {
+  delimited(
+    tag("\""),
+    escaped(alphanumeric1, '\\', one_of(r#""n\"#)),
+    tag("\""),
+  )(input)
 }
 
 /// Parse a lambda.
@@ -70,7 +92,7 @@ fn p_app(input: &str) -> IResult<&str, Expr> {
     let (input, targets) = separated_list1(
       multispace1,
       // p_var before p_app, so function application associates to the left.
-      alt((map(p_var, Expr::Var), p_app, p_lam, p_const)),
+      alt((map(p_var, Expr::Var), p_array, p_obj, p_app, p_lam, p_const)),
     )(input)?;
     Ok((
       input,
