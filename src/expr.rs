@@ -25,19 +25,12 @@ impl Display for Const {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Var(pub String);
-
-impl Display for Var {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
 /// An expression as the user entered it (containing syntactic sugar).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
   Const(Const),
-  Var(Var),
-  Lam(Var, Box<Expr>),
+  Var(String),
+  Lam(String, Box<Expr>),
   App(Box<Expr>, Box<Expr>),
   Arr(Vec<Expr>),
   Obj(HashMap<String, Expr>),

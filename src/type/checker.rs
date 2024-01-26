@@ -33,7 +33,7 @@ impl Expr {
 #[derive(Debug, Error, PartialEq)]
 pub enum TypeCheckError {
   #[error("variable not in scope: {0}")]
-  VariableNotInScopeError(Var),
+  VariableNotInScopeError(String),
   #[error("can't unify {0} with {1}")]
   UnificationError(Type, Type),
   #[error("Occurs check: can't construct infinite type: {0} ≡ {1}")]
@@ -120,7 +120,7 @@ impl Constraints {
 struct State {
   /// Typing context containing resolved constraints of the form
   /// variable → its type.
-  ctx:  HashMap<Var, Type>,
+  ctx:  HashMap<String, Type>,
   /// Number of type variables in use.
   tvar: TVar,
 }

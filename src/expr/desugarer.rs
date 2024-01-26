@@ -1,13 +1,13 @@
 use std::{collections::HashMap, fmt::{self, Display}};
 
-use super::{fmt_array, fmt_object, Const, Expr, Var};
+use super::{fmt_array, fmt_object, Const, Expr};
 
 /// A desugared expression.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DExpr {
   Const(Const),
-  Var(Var),
-  Lam(Var, Box<DExpr>),
+  Var(String),
+  Lam(String, Box<DExpr>),
   App(Box<DExpr>, Box<DExpr>),
   Arr(Vec<DExpr>),
   Obj(HashMap<String, DExpr>),

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use nom::{self, branch::{alt, Alt}, bytes::complete::{escaped, tag}, character::complete::{alpha1, alphanumeric0, alphanumeric1, multispace0, multispace1, one_of}, combinator::{all_consuming, map}, error::ParseError, multi::separated_list1, number::complete::double, sequence::{delimited, pair, terminated}, AsChar, Finish, IResult, InputTakeAtPosition, Parser};
 
-use crate::expr::{Const, Expr, Var};
+use crate::expr::{Const, Expr};
 
 pub fn parse(inp: &str) -> Result<Expr, nom::error::Error<&str>> {
   all_consuming(p_expr)(inp).finish().map(|(_, r)| r)
@@ -27,9 +27,9 @@ fn p_const(input: &str) -> IResult<&str, Expr> {
 
 /// Parse a variable. Variables must start with a letter, and may use
 /// alphanumeric characters after that.
-fn p_var(input: &str) -> IResult<&str, Var> {
+fn p_var(input: &str) -> IResult<&str, String> {
   map(pair(alpha1, alphanumeric0), |(s1, s2): (&str, &str)| {
-    Var(s1.to_string() + s2)
+    s1.to_string() + s2
   })(input)
 }
 

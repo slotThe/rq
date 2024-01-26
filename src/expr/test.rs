@@ -1,11 +1,11 @@
-use crate::expr::{parser::parse, Const::*, Expr::{self, *}, Var};
+use crate::expr::{parser::parse, Const::*, Expr::{self, *}};
 
 ///////////////////////////////////////////////////////////////////////
 ///// Parser tests
 
-fn lam(h: &str, b: Expr) -> Expr { Expr::Lam(Var(h.to_string()), Box::new(b)) }
+fn lam(h: &str, b: Expr) -> Expr { Expr::Lam(h.to_string(), Box::new(b)) }
 fn app(e1: Expr, e2: Expr) -> Expr { Expr::App(Box::new(e1), Box::new(e2)) }
-fn var(v: &str) -> Expr { Expr::Var(Var(v.to_string())) }
+fn var(v: &str) -> Expr { Expr::Var(v.to_string()) }
 fn num(n: f64) -> Expr { Const(Num(n)) }
 fn arr(xs: &[Expr]) -> Expr { Expr::Arr(xs.to_vec()) }
 fn obj(xs: &[(&str, Expr)]) -> Expr {
