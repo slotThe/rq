@@ -28,16 +28,18 @@ impl Display for DExpr {
 
 impl Expr {
   // Desugar the given expression.
-  pub fn desugar(self) -> DExpr {
+  pub fn desugar(&self) -> DExpr {
     match self {
-      Expr::Const(c) => DExpr::Const(c),
-      Expr::Var(v) => DExpr::Var(v),
-      Expr::Lam(v, e) => DExpr::Lam(v, Box::new(e.desugar())),
+      Expr::Const(c) => DExpr::Const(c.clone()),
+      Expr::Var(v) => DExpr::Var(v.clone()),
+      Expr::Lam(v, e) => DExpr::Lam(v.clone(), Box::new(e.desugar())),
       Expr::App(f, x) => DExpr::App(Box::new(f.desugar()), Box::new(x.desugar())),
-      Expr::Arr(xs) => DExpr::Arr(xs.into_iter().map(|x| x.desugar()).collect()),
-      Expr::Obj(hm) => {
-        DExpr::Obj(hm.into_iter().map(|(k, v)| (k, v.desugar())).collect())
-      },
+      Expr::Arr(xs) => DExpr::Arr(xs.iter().map(|x| x.desugar()).collect()),
+      Expr::Obj(hm) => DExpr::Obj(
+        hm.iter()
+          .map(|(k, v)| (k.to_owned(), v.desugar()))
+          .collect(),
+      ),
     }
   }
 }
