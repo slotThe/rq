@@ -3,6 +3,7 @@ use std::{collections::HashMap, fmt::{self, Display}};
 pub mod desugarer;
 pub mod json;
 pub mod parser;
+#[cfg(test)]
 pub mod test;
 
 #[derive(Debug, Clone, PartialEq)]
