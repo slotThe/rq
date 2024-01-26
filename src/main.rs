@@ -44,7 +44,7 @@ fn repl() -> Result<()> {
       },
       // Type
       Some(buffer) => {
-        let inferred_type = &parse(buffer).unwrap_or(NULL).check()?;
+        let inferred_type = &parse(buffer).unwrap_or(NULL).infer()?;
         writeln!(out_handle, "{inferred_type}")?;
       },
     }
@@ -65,7 +65,7 @@ fn oneshot() -> Result<()> {
   let input_expr = &env::args().collect::<Vec<_>>()[1];
   let expr = parse(input_expr).unwrap_or(NULL);
   println!("Expression: {expr}");
-  let typ = expr.clone().check()?;
+  let typ = expr.clone().infer()?;
   println!("Inferred type: {typ}");
   let dexpr = expr.desugar();
   println!("Desugared expression: {dexpr}");

@@ -3,11 +3,24 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 use super::{TVar, Type};
-use crate::expr::{Expr, Var};
+use crate::expr::Expr;
+
+/// A type-checked expression.
+#[derive(Debug)]
+pub struct TCExpr {
+  pub expr: Expr,
+}
 
 impl Expr {
-  /// Infer the type of an expression.
-  pub fn check(&self) -> Result<Type, TypeCheckError> {
+  // Verify that the given expression has a valid type.
+  pub fn check(&self) -> Result<TCExpr, TypeCheckError> {
+    self.infer()?;
+    Ok(TCExpr { expr: self.clone() })
+  }
+
+  /// Infer the type of an expression. Returns the desugared expression with
+  /// its associated type.
+  pub fn infer(&self) -> Result<Type, TypeCheckError> {
     let mut state = State {
       ctx:  HashMap::new(),
       tvar: TVar(0),

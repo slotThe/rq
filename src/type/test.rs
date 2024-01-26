@@ -9,7 +9,7 @@ use crate::{expr::parser::parse, r#type::{TVar, Type}};
 fn infers_type_of_S_combinator() -> Result<()> {
   use Type::*;
   let expr = parse("λf -> λg → \\x → f x (g x)")?;
-  let typ = expr.check();
+  let typ = expr.infer();
   assert_eq!(
     typ,
     Ok(Arr(
