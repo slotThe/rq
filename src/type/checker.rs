@@ -33,11 +33,11 @@ impl Expr {
 #[derive(Debug, Error, PartialEq)]
 pub enum TypeCheckError {
   #[error("variable not in scope: {0}")]
-  VariableNotInScopeError(String),
+  VariableNotInScope(String),
   #[error("can't unify {0} with {1}")]
   UnificationError(Type, Type),
   #[error("Occurs check: can't construct infinite type: {0} ≡ {1}")]
-  OccursError(Type, Type),
+  OccursCheck(Type, Type),
 }
 
 /// A single substitution comprises a type variable and its refined type.
@@ -102,7 +102,7 @@ impl Constraints {
     typ: &Type, // Its refined type
   ) -> Result<Substitutions, TypeCheckError> {
     if var.occurs_in(typ) {
-      Err(TypeCheckError::OccursError(Type::Var(var), typ.clone()))
+      Err(TypeCheckError::OccursCheck(Type::Var(var), typ.clone()))
     } else {
       let refinement: &Substitutions = &HashMap::from([(var, typ.clone())]);
       let mut unified: Substitutions = self
@@ -142,7 +142,7 @@ fn gather_constraints(
   match expr {
     Expr::Const(_) => Ok((Type::JSON, Constraints::new())),
     Expr::Var(v) => match state.ctx.get(v) {
-      None => Err(TypeCheckError::VariableNotInScopeError(v.clone())),
+      None => Err(TypeCheckError::VariableNotInScope(v.clone())),
       Some(v) => Ok((v.clone(), Constraints::new())),
     },
     Expr::Arr(exprs) => Ok((

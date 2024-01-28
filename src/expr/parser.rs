@@ -36,25 +36,21 @@ fn p_var(input: &str) -> IResult<&str, String> {
 /// Parse an array.
 fn p_array(input: &str) -> IResult<&str, Expr> {
   delimited(
-    lexeme(tag("[")),
-    map(separated_list1(lexeme(tag(",")), p_expr), Expr::Arr),
-    lexeme(tag("]")),
+    symbol("["),
+    map(separated_list1(symbol(","), p_expr), Expr::Arr),
+    symbol("]"),
   )(input)
 }
 
 /// Parse an object.
 fn p_obj(input: &str) -> IResult<&str, Expr> {
   let p_kv = |input| -> IResult<&str, (String, Expr)> {
-    let (input, k) = terminated(p_str, lexeme(tag(":")))(input)?;
+    let (input, k) = terminated(p_str, symbol(":"))(input)?;
     let (input, v) = p_expr(input)?;
     Ok((input, (k.to_string(), v)))
   };
   map(
-    delimited(
-      lexeme(tag("{")),
-      separated_list1(lexeme(tag(",")), p_kv),
-      lexeme(tag("}")),
-    ),
+    delimited(symbol("{"), separated_list1(symbol(","), p_kv), symbol("}")),
     |o| Expr::Obj(o.into_iter().collect()),
   )(input)
 }
@@ -77,7 +73,7 @@ fn p_lam(input: &str) -> IResult<&str, Expr> {
       lalt((tag("->"), tag("→"))),
     )(input)
   };
-  let rust_head = |input| delimited(lexeme(tag("|")), p_var, lexeme(tag("|")))(input);
+  let rust_head = |input| delimited(symbol("|"), p_var, symbol("|"))(input);
   let res = try_parens(|input| {
     let (input, head) = lalt((haskell_head, rust_head))(input)?;
     let (input, body) = p_expr(input)?;
