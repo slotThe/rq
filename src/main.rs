@@ -79,5 +79,10 @@ fn oneshot() -> Result<()> {
   let dexpr = expr.desugar();
   println!("Desugared expression: {dexpr}");
 
+  let eval = app(expr, json_to_expr(&json))
+    .check(&STDLIB_TYPES)?
+    .eval(&STDLIB_CTX);
+  println!("Evaluated expression: {}", eval);
+
   Ok(())
 }

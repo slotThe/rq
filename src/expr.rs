@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::{self, Display}};
 
 pub mod desugarer;
+pub mod evaluator;
 pub mod json;
 pub mod parser;
 #[cfg(test)]

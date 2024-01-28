@@ -12,6 +12,8 @@ pub enum Type {
   Arr(Box<Type>, Box<Type>), // A type arrow.
 }
 
+pub fn arr(t1: Type, t2: Type) -> Type { Type::Arr(Box::new(t1), Box::new(t2)) }
+
 impl Display for Type {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
