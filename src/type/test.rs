@@ -1,7 +1,7 @@
-#[cfg(test)]
+use std::collections::HashMap;
+
 use anyhow::Result;
 
-#[cfg(test)]
 use crate::{expr::parser::parse, r#type::{TVar, Type}};
 
 #[test]
@@ -9,7 +9,7 @@ use crate::{expr::parser::parse, r#type::{TVar, Type}};
 fn infers_type_of_S_combinator() -> Result<()> {
   use Type::*;
   let expr = parse("λf -> λg → \\x → f x (g x)")?;
-  let typ = expr.infer();
+  let typ = expr.infer(&HashMap::new());
   assert_eq!(
     typ,
     Ok(Arr(

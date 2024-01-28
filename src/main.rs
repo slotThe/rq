@@ -1,14 +1,20 @@
 #![feature(extend_one)]
 #![feature(iter_intersperse)]
 
-pub mod expr;
-pub mod r#type;
+#[macro_use]
+extern crate lazy_static;
+
+mod expr;
+mod stdlib;
+mod r#type;
 
 use std::{env, io::{self, BufRead, Read, Write}};
 
 use anyhow::Result;
 use expr::{parser::parse, Const, Expr};
 use serde_json::Value;
+
+use crate::{expr::{app, json::json_to_expr}, stdlib::{STDLIB_CTX, STDLIB_TYPES}};
 
 const NULL: Expr = Expr::Const(Const::Null);
 
@@ -36,7 +42,10 @@ fn repl() -> Result<()> {
     match buffer.strip_prefix(":t ") {
       None => match buffer.strip_prefix(":d ") {
         // Normal expression
-        None => writeln!(out_handle, "{}", parse(&buffer).unwrap_or(NULL))?,
+        None => {
+          let tce = parse(&buffer).unwrap_or(NULL).check(&STDLIB_TYPES)?;
+          writeln!(out_handle, "{}", tce.eval(&STDLIB_CTX))?;
+        },
         // Desugared expression
         Some(buffer) => {
           writeln!(out_handle, "{}", parse(buffer).unwrap_or(NULL).desugar())?
@@ -44,7 +53,7 @@ fn repl() -> Result<()> {
       },
       // Type
       Some(buffer) => {
-        let inferred_type = &parse(buffer).unwrap_or(NULL).infer()?;
+        let inferred_type = &parse(buffer).unwrap_or(NULL).infer(&STDLIB_TYPES)?;
         writeln!(out_handle, "{inferred_type}")?;
       },
     }
@@ -65,7 +74,7 @@ fn oneshot() -> Result<()> {
   let input_expr = &env::args().collect::<Vec<_>>()[1];
   let expr = parse(input_expr).unwrap_or(NULL);
   println!("Expression: {expr}");
-  let typ = expr.clone().infer()?;
+  let typ = expr.clone().infer(&STDLIB_TYPES)?;
   println!("Inferred type: {typ}");
   let dexpr = expr.desugar();
   println!("Desugared expression: {dexpr}");

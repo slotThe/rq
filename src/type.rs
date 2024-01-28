@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 pub mod checker;
+#[cfg(test)]
 pub mod test;
 
 /// The type of a type!

@@ -13,16 +13,16 @@ pub struct TCExpr {
 
 impl Expr {
   // Verify that the given expression has a valid type.
-  pub fn check(&self) -> Result<TCExpr, TypeCheckError> {
-    self.infer()?;
+  pub fn check(&self, ctx: &HashMap<String, Type>) -> Result<TCExpr, TypeCheckError> {
+    self.infer(ctx)?;
     Ok(TCExpr { expr: self.clone() })
   }
 
   /// Infer the type of an expression. Returns the desugared expression with
   /// its associated type.
-  pub fn infer(&self) -> Result<Type, TypeCheckError> {
+  pub fn infer(&self, ctx: &HashMap<String, Type>) -> Result<Type, TypeCheckError> {
     let mut state = State {
-      ctx:  HashMap::new(),
+      ctx:  ctx.clone(),
       tvar: TVar(0),
     };
     let (raw_type, mut constrs) = gather_constraints(&mut state, self)?;

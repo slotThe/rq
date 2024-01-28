@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::{self, Display}};
 
 use super::{fmt_array, fmt_object, Const, Expr};
+use crate::stdlib::Builtin;
 
 /// A desugared expression.
 #[derive(Debug, Clone, PartialEq)]
@@ -11,6 +12,7 @@ pub enum DExpr {
   App(Box<DExpr>, Box<DExpr>),
   Arr(Vec<DExpr>),
   Obj(HashMap<String, DExpr>),
+  Builtin(Builtin),
 }
 
 impl Display for DExpr {
@@ -22,12 +24,13 @@ impl Display for DExpr {
       DExpr::App(g, x) => write!(f, "({g})⟨{x}⟩"),
       DExpr::Arr(xs) => fmt_array(xs, f),
       DExpr::Obj(hm) => fmt_object(hm, f),
+      DExpr::Builtin(b) => write!(f, "{b}"),
     }
   }
 }
 
 impl Expr {
-  // Desugar the given expression.
+  /// Desugar the given expression.
   pub fn desugar(&self) -> DExpr {
     match self {
       Expr::Const(c) => DExpr::Const(c.clone()),

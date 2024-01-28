@@ -1,6 +1,3 @@
-///////////////////////////////////////////////////////////////////////
-///// Parser tests
-
 mod parser {
   use crate::expr::{app, arr, lam, num, obj, parser::parse, var, Const::*, Expr::*};
 
@@ -72,6 +69,8 @@ mod parser {
 }
 
 mod evaluator {
+  use std::collections::HashMap;
+
   use anyhow::Result;
 
   use crate::expr::{app, lam, var};
@@ -81,8 +80,8 @@ mod evaluator {
     assert_eq!(
       lam("y'", lam("x'", var("x'"))).desugar(),
       app(lam("x", lam("y", var("x"))), lam("x", var("x")))
-        .check()?
-        .eval()
+        .check(&HashMap::new())?
+        .eval(&HashMap::new())
     );
     Ok(())
   }
