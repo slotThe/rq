@@ -1,7 +1,10 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use super::{desugarer::DExpr, Const};
-use crate::{r#type::checker::TCExpr, stdlib::Builtin};
+use self::{desugar::DExpr, stdlib::Builtin};
+use crate::{expr::Const, r#type::checker::TCExpr};
+
+pub mod desugar;
+pub mod stdlib;
 
 impl TCExpr {
   /// Evaluate a type-checked expression into its normal form.
@@ -69,19 +72,23 @@ impl Sem {
     use Builtin::*;
     use Sem::*;
     match (self, x) {
+      // Closure
       (Closure(env, v, b), _) => {
         env.borrow_mut().insert(v.clone(), x.clone()); // Associate the bound variable to x
         b.to_sem(env)
       },
+      // Small builtin
       (SBuiltin(Id), _) => x.clone(),
       (SBuiltin(_), _) => app(self, x),
       (App(box SBuiltin(BConst), this), _) => *this.clone(),
+      // Get
       (App(box SBuiltin(Get), box SConst(Const::Num(i))), Arr(xs)) => {
-        xs[*i as usize].clone()
+        xs[*i as usize].clone() // FIXME: Should we check?
       },
       (App(box SBuiltin(Get), box SConst(Const::String(s))), Obj(ob)) => {
         ob.get(s).unwrap().clone()
       },
+      // Otherwise
       _ => app(self, x),
     }
   }

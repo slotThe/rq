@@ -5,9 +5,10 @@
 #[macro_use]
 extern crate lazy_static;
 
+mod eval;
 mod expr;
-mod stdlib;
 mod r#type;
+mod util;
 
 use std::{env, io::{self, BufRead, Read, Write}};
 
@@ -15,7 +16,7 @@ use anyhow::Result;
 use expr::{parser::parse, Const, Expr};
 use serde_json::Value;
 
-use crate::{expr::{app, json::json_to_expr}, stdlib::{STDLIB_CTX, STDLIB_TYPES}};
+use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{app, json::json_to_expr}};
 
 const NULL: Expr = Expr::Const(Const::Null);
 
@@ -48,9 +49,7 @@ fn repl() -> Result<()> {
           writeln!(out_handle, "{}", tce.eval(&STDLIB_CTX))?;
         },
         // Desugared expression
-        Some(buffer) => {
-          writeln!(out_handle, "{}", parse(buffer).unwrap_or(NULL).desugar())?
-        },
+        Some(buffer) => writeln!(out_handle, "{}", parse(buffer).unwrap().desugar())?,
       },
       // Type
       Some(buffer) => {
@@ -73,6 +72,7 @@ fn oneshot() -> Result<()> {
   println!("Json: {json}");
 
   let input_expr = &env::args().collect::<Vec<_>>()[1];
+  println!("Input expression: {input_expr}");
   let expr = parse(input_expr).unwrap_or(NULL);
   println!("Expression: {expr}");
   let typ = expr.clone().infer(&STDLIB_TYPES)?;
@@ -80,10 +80,10 @@ fn oneshot() -> Result<()> {
   let dexpr = expr.desugar();
   println!("Desugared expression: {dexpr}");
 
-  let eval = app(expr, json_to_expr(&json))
-    .check(&STDLIB_TYPES)?
-    .eval(&STDLIB_CTX);
-  println!("Evaluated expression: {}", eval);
+  let expr_with_json = app(expr, json_to_expr(&json));
+  println!("Expression with JSON: {expr_with_json}");
+  let eval = expr_with_json.check(&STDLIB_TYPES)?.eval(&STDLIB_CTX);
+  println!("Evaluated expression: {eval}");
 
   Ok(())
 }

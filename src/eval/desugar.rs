@@ -1,7 +1,6 @@
 use std::{collections::HashMap, fmt::{self, Display}};
 
-use super::{fmt_array, fmt_object, Const, Expr};
-use crate::stdlib::Builtin;
+use crate::{eval::stdlib::Builtin, expr::{Const, Expr}, util::{fmt_array, fmt_object}};
 
 /// A desugared expression.
 #[derive(Debug, Clone, PartialEq)]

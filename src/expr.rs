@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::{self, Display}};
 
-pub mod desugarer;
-pub mod evaluator;
+use crate::util::{fmt_array, fmt_object};
+
 pub mod json;
 pub mod parser;
 #[cfg(test)]
@@ -50,33 +50,7 @@ impl Display for Expr {
   }
 }
 
-fn fmt_object<T: Display>(
-  hm: &HashMap<String, T>,
-  f: &mut fmt::Formatter,
-) -> fmt::Result {
-  write!(
-    f,
-    "{{ {} }}",
-    hm.iter()
-      .map(|(k, v)| k.to_owned() + ": " + &v.to_string())
-      .intersperse(", ".to_string())
-      .collect::<String>(),
-  )
-}
-
-fn fmt_array<T: Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
-  write!(
-    f,
-    "[ {} ]",
-    xs.iter()
-      .map(|x| x.to_string())
-      .intersperse(", ".to_string())
-      .collect::<String>()
-  )
-}
-
 // Constructing expressions.
-
 pub fn app(e1: Expr, e2: Expr) -> Expr { Expr::App(Box::new(e1), Box::new(e2)) }
 #[cfg(test)]
 pub fn lam(h: &str, b: Expr) -> Expr { Expr::Lam(h.to_string(), Box::new(b)) }
