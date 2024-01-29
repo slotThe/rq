@@ -9,16 +9,21 @@ pub mod test;
 #[allow(clippy::upper_case_acronyms)]
 pub enum Type {
   Var(TVar),                 // A type variable.
+  Num,                       // A number.
+  Str,                       // A string.
   JSON,                      // The JSON type: a black hole.
   Arr(Box<Type>, Box<Type>), // A type arrow.
 }
 
+/// Construct a type arrow.
 pub fn arr(t1: Type, t2: Type) -> Type { Type::Arr(Box::new(t1), Box::new(t2)) }
 
 impl Display for Type {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       Type::JSON => write!(f, "JSON"),
+      Type::Num => write!(f, "Num"),
+      Type::Str => write!(f, "String"),
       Type::Var(v) => write!(
         f,
         "{}",
@@ -46,8 +51,8 @@ impl TVar {
   fn occurs_in(&self, t: &Type) -> bool {
     match t {
       Type::Var(tv) => tv == self,
-      Type::JSON => false,
       Type::Arr(t1, t2) => self.occurs_in(t1) || self.occurs_in(t2),
+      Type::JSON | Type::Str | Type::Num => false,
     }
   }
 }
