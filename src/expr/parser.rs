@@ -45,7 +45,7 @@ fn p_array(input: &str) -> IResult<&str, Expr> {
 /// Parse an object.
 fn p_obj(input: &str) -> IResult<&str, Expr> {
   let p_kv = |input| -> IResult<&str, (String, Expr)> {
-    let (input, k) = terminated(p_str, symbol(":"))(input)?;
+    let (input, k) = terminated(lalt((alphanumeric1, p_str)), symbol(":"))(input)?;
     let (input, v) = p_expr(input)?;
     Ok((input, (k.to_string(), v)))
   };
@@ -90,11 +90,18 @@ fn p_lam(input: &str) -> IResult<&str, Expr> {
 fn p_app(input: &str) -> IResult<&str, Expr> {
   let go = |input| {
     // Only variable and parenthesised lambdas can represent functions.
-    let (input, fun) = lalt((map(p_var, Expr::Var), parens(p_lam)))(input)?;
+    let (input, fun) = lalt((lexeme(parens(p_lam)), map(p_var, Expr::Var)))(input)?;
     let (input, targets) = separated_list1(
       multispace1,
       // p_var before p_app, so function application associates to the left.
-      alt((map(p_var, Expr::Var), p_array, p_obj, p_app, p_lam, p_const)),
+      alt((
+        map(p_var, Expr::Var),
+        p_array,
+        p_obj,
+        parens(p_lam),
+        p_app,
+        p_const,
+      )),
     )(input)?;
     Ok((
       input,
@@ -137,12 +144,12 @@ pub fn try_parens<'a, F, R>(parser: F) -> impl FnMut(&'a str) -> IResult<&'a str
 where
   F: FnMut(&'a str) -> IResult<&'a str, R> + Clone,
 {
-  lexeme(alt((parens(parser.clone()), parser)))
+  lalt((parens(parser.clone()), parser))
 }
 
 pub fn parens<'a, F, R>(parser: F) -> impl FnMut(&'a str) -> IResult<&'a str, R>
 where
   F: FnMut(&'a str) -> IResult<&'a str, R> + Clone,
 {
-  lexeme(delimited(tag("("), parser, tag(")")))
+  delimited(tag("("), parser, tag(")"))
 }

@@ -14,6 +14,10 @@ mod parser {
   fn applications() {
     parse_eq!("(\\x -> x) 5", app(lam("x", var("x")), num(5.0)));
     parse_eq!("λx → x 5", lam("x", app(var("x"), num(5.0))));
+    parse_eq!(
+      "map (|x| x) [1]",
+      app(app(var("map"), lam("x", var("x"))), arr(&[num(1.0)]))
+    )
   }
 
   #[test]
