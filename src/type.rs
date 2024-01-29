@@ -38,7 +38,13 @@ impl Display for Type {
         std::char::from_u32((v.0 % 26 + 97) as u32).unwrap() // FIXME: :>
       ),
       Type::Arr(box Type::Arr(t11, t12), t2) => write!(f, "({t11} → {t12}) → {t2}"),
-      Type::Arr(t1, t2) => write!(f, "{t1} → {t2}"),
+      Type::Arr(t1, t2) => {
+        let add_parens = |t: &Type| match t {
+          Type::Or(_, _) => format!("({t})"),
+          _ => format!("{t}"),
+        };
+        write!(f, "{} → {}", add_parens(t1), add_parens(t2))
+      },
       Type::Or(t1, t2) => {
         let add_parens = |t: &Type| match t {
           Type::Arr(_, _) => format!("({t})"),
