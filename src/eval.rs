@@ -88,6 +88,15 @@ impl Sem {
       (App(box SBuiltin(Get), box SConst(Const::String(s))), Obj(ob)) => {
         ob.get(s).unwrap().clone()
       },
+      // Map
+      (App(box SBuiltin(Map), closure), Arr(xs)) => {
+        Arr(xs.iter().map(|x| closure.apply(x)).collect())
+      },
+      (App(box SBuiltin(Map), closure), Obj(ob)) => Obj(
+        ob.iter()
+          .map(|(k, v)| (k.clone(), closure.apply(v)))
+          .collect(),
+      ),
       // Otherwise
       _ => app(self, x),
     }

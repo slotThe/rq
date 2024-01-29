@@ -7,6 +7,7 @@ pub enum Builtin {
   Id,
   BConst,
   Get,
+  Map,
 }
 
 impl Builtin {
@@ -15,6 +16,7 @@ impl Builtin {
       Builtin::Id => "id",
       Builtin::BConst => "const",
       Builtin::Get => "get",
+      Builtin::Map => "map",
     }
   }
 }
@@ -35,7 +37,7 @@ lazy_static! {
     HashMap::from(STDLIB.clone().map(|f| (f.name, f.builtin)));
   pub static ref STDLIB_TYPES: HashMap<String, Type> =
     HashMap::from(STDLIB.clone().map(|f| (f.name.to_string(), f.expr_type)));
-  pub static ref STDLIB: [StdFun; 3] = [
+  pub static ref STDLIB: [StdFun; 4] = [
     StdFun {
       name:      Builtin::Id.show(),
       builtin:   Builtin::Id,
@@ -52,6 +54,14 @@ lazy_static! {
       expr_type: t_or(
         arr(Type::Num, arr(Type::Array, Type::JSON)),
         arr(Type::Str, arr(Type::Obj, Type::JSON))
+      ),
+    },
+    StdFun {
+      name:      Builtin::Map.show(),
+      builtin:   Builtin::Map,
+      expr_type: arr(
+        arr(Type::JSON, Type::JSON),
+        arr(t_or(Type::Array, Type::Obj), Type::JSON)
       ),
     }
   ];
