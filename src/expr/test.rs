@@ -12,8 +12,20 @@ mod parser {
 
   #[test]
   fn applications() {
-    parse_eq!("(\\x -> x) 5", app(lam("x", var("x")), num(5.0)),);
+    parse_eq!("(\\x -> x) 5", app(lam("x", var("x")), num(5.0)));
     parse_eq!("λx → x 5", lam("x", app(var("x"), num(5.0))));
+  }
+
+  #[test]
+  fn whitespace() {
+    parse_eq!("[ 1 ,   5]", arr(&[num(1.0), num(5.0)]));
+    parse_eq!("[ 1,5    ]", arr(&[num(1.0), num(5.0)]));
+    parse_eq!("{\"a\":[1]}", obj(&[("a", arr(&[num(1.0)]))]));
+    parse_eq!("{ \"a\"  :[1] }", obj(&[("a", arr(&[num(1.0)]))]));
+    parse_eq!("{\"a\":  [1] }", obj(&[("a", arr(&[num(1.0)]))]));
+    parse_eq!("(  \\x  -> x )", lam("x", var("x")));
+    parse_eq!("(|x|x)", lam("x", var("x")));
+    parse_eq!("(λ x→x )", lam("x", var("x")));
   }
 
   #[test]
@@ -50,18 +62,21 @@ mod parser {
   #[test]
   fn parses_objects_and_arrays() {
     parse_eq!(
-      "|f| f { \"name\": { \"first\": 42, \"second\": [ 10, null ] } }",
+      "|f| f { \"name\": { \"first\": 42, \"second\": [ 10, null ] } } 5",
       lam(
         "f",
         app(
-          var("f"),
-          obj(&[(
-            "name",
-            obj(&[
-              ("first", num(42.0)),
-              ("second", arr(&[num(10.0), Const(Null)]))
-            ])
-          )])
+          app(
+            var("f"),
+            obj(&[(
+              "name",
+              obj(&[
+                ("first", num(42.0)),
+                ("second", arr(&[num(10.0), Const(Null)]))
+              ])
+            )])
+          ),
+          num(5.0)
         )
       )
     )

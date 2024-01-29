@@ -1,5 +1,5 @@
 use anyhow::Result;
-use nom::{self, branch::{alt, Alt}, bytes::complete::{escaped, tag}, character::complete::{alpha1, alphanumeric0, alphanumeric1, multispace0, multispace1, one_of}, combinator::{all_consuming, map}, error::ParseError, multi::separated_list1, number::complete::double, sequence::{delimited, pair, terminated}, AsChar, Finish, IResult, InputTakeAtPosition, Parser};
+use nom::{self, branch::{alt, Alt}, bytes::complete::{escaped, tag}, character::complete::{alpha1, alphanumeric0, alphanumeric1, multispace0, multispace1, one_of}, combinator::{all_consuming, map}, error::ParseError, multi::separated_list1, number::complete::double, sequence::{delimited, pair, preceded, terminated}, AsChar, Finish, IResult, InputTakeAtPosition, Parser};
 
 use crate::expr::{Const, Expr};
 
@@ -36,9 +36,9 @@ fn p_var(input: &str) -> IResult<&str, String> {
 /// Parse an array.
 fn p_array(input: &str) -> IResult<&str, Expr> {
   delimited(
-    symbol("["),
+    tag("["),
     map(separated_list1(symbol(","), p_expr), Expr::Arr),
-    symbol("]"),
+    tag("]"),
   )(input)
 }
 
@@ -50,7 +50,11 @@ fn p_obj(input: &str) -> IResult<&str, Expr> {
     Ok((input, (k.to_string(), v)))
   };
   map(
-    delimited(symbol("{"), separated_list1(symbol(","), p_kv), symbol("}")),
+    delimited(
+      terminated(tag("{"), multispace0),
+      separated_list1(symbol(","), p_kv),
+      preceded(multispace0, tag("}")),
+    ),
     |o| Expr::Obj(o.into_iter().collect()),
   )(input)
 }
