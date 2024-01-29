@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use thiserror::Error;
 
-use super::{TVar, Type};
-use crate::expr::Expr;
+use super::{arr, t_or, TVar, Type};
+use crate::expr::{Const, Expr};
 
 /// A type-checked expression.
 #[derive(Debug)]
@@ -30,7 +30,7 @@ impl Expr {
   }
 }
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Clone, Error, PartialEq)]
 pub enum TypeCheckError {
   #[error("variable not in scope: {0}")]
   VariableNotInScope(String),
@@ -52,15 +52,15 @@ impl Type {
     match self {
       Type::JSON | Type::Str | Type::Num | Type::Array | Type::Obj => self.clone(),
       Type::Var(tv) => subs.get(tv).unwrap_or(self).clone(),
-      Type::Arr(t1, t2) => {
-        Type::Arr(Box::new(t1.refine(subs)), Box::new(t2.refine(subs)))
-      },
+      Type::Arr(t1, t2) => arr(t1.refine(subs), t2.refine(subs)),
+      Type::Or(t1, t2) => t_or(t1.refine(subs), t2.refine(subs)),
     }
   }
 }
 
 /// An association list of type constraints. An element (x, y) represents
 /// a constraint of the form x ≡ y.
+#[derive(Debug, Clone)]
 struct Constraints(Vec<(Type, Type)>);
 
 impl FromIterator<(Type, Type)> for Constraints {
@@ -98,6 +98,16 @@ impl Constraints {
         if t1.unifies_with(&t2) {
           self.unify()
         } else {
+          let unify_error = Err(TypeCheckError::UnificationError(t1.clone(), t2.clone()));
+          // Unify a coproduct given constraints for the left and right side.
+          let mut unify_or = |l, r| -> Result<Substitutions, TypeCheckError> {
+            let mut constraints_l = self.clone();
+            constraints_l.0.push(l);
+            self.0.push(r);
+            self
+              .unify()
+              .or_else(|_| constraints_l.unify().or(unify_error.clone()))
+          };
           match (t1.clone(), t2.clone()) {
             (Type::Var(v), _) => self.substitute(v, &t2), // refine
             (_, Type::Var(v)) => self.substitute(v, &t1), // refine
@@ -105,7 +115,9 @@ impl Constraints {
               self.0.extend_from_slice(&[(*t1, *t3), (*t2, *t4)]); // add new constraints
               self.unify()
             },
-            _ => Err(TypeCheckError::UnificationError(t1, t2)),
+            (Type::Or(t3, t4), _) => unify_or((*t3, t2.clone()), (*t4, t2.clone())),
+            (_, Type::Or(t3, t4)) => unify_or((t2.clone(), *t3), (t2.clone(), *t4)),
+            _ => unify_error,
           }
         }
       },
@@ -134,6 +146,7 @@ impl Constraints {
   }
 }
 
+#[derive(Clone)]
 struct State {
   /// Typing context containing resolved constraints of the form
   /// variable → its type.
@@ -194,17 +207,14 @@ fn gather_constraints(
       let tv = Type::Var(state.fresh_mut());
       state.ctx.insert(var.clone(), tv.clone());
       let (ret_type, constrs) = gather_constraints(state, body)?;
-      Ok((Type::Arr(Box::new(tv), Box::new(ret_type)), constrs))
+      Ok((arr(tv, ret_type), constrs))
     },
     Expr::App(f, x) => {
       let (type_f, con_f) = gather_constraints(state, f)?;
       let (type_x, con_x) = gather_constraints(state, x)?;
       let ret_type = Type::Var(state.fresh_mut());
       let mut constraints = Constraints([con_f.0, con_x.0].concat());
-      constraints.0.push((
-        type_f,
-        Type::Arr(Box::new(type_x), Box::new(ret_type.clone())),
-      ));
+      constraints.0.push((type_f, arr(type_x, ret_type.clone())));
       Ok((ret_type, constraints))
     },
   }
