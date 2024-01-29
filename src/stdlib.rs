@@ -1,18 +1,20 @@
 use std::{collections::HashMap, fmt::{self, Display}};
 
-use crate::r#type::{arr, Type};
+use crate::r#type::{arr, t_or, Type};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Builtin {
   Id,
-  Const,
+  BConst,
+  Get,
 }
 
 impl Builtin {
   fn show(&self) -> &'static str {
     match self {
       Builtin::Id => "id",
-      Builtin::Const => "const",
+      Builtin::BConst => "const",
+      Builtin::Get => "get",
     }
   }
 }
@@ -33,16 +35,24 @@ lazy_static! {
     HashMap::from(STDLIB.clone().map(|f| (f.name, f.builtin)));
   pub static ref STDLIB_TYPES: HashMap<String, Type> =
     HashMap::from(STDLIB.clone().map(|f| (f.name.to_string(), f.expr_type)));
-  pub static ref STDLIB: [StdFun; 2] = [
+  pub static ref STDLIB: [StdFun; 3] = [
     StdFun {
       name:      Builtin::Id.show(),
       builtin:   Builtin::Id,
       expr_type: arr(Type::JSON, Type::JSON),
     },
     StdFun {
-      name:      Builtin::Const.show(),
-      builtin:   Builtin::Const,
+      name:      Builtin::BConst.show(),
+      builtin:   Builtin::BConst,
       expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Get.show(),
+      builtin:   Builtin::Get,
+      expr_type: t_or(
+        arr(Type::Num, arr(Type::Array, Type::JSON)),
+        arr(Type::Str, arr(Type::Obj, Type::JSON))
+      ),
     }
   ];
 }

@@ -1,5 +1,6 @@
 #![feature(extend_one)]
 #![feature(iter_intersperse)]
+#![feature(box_patterns)]
 
 #[macro_use]
 extern crate lazy_static;
