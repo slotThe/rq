@@ -50,7 +50,7 @@ impl Type {
     subs: &Substitutions, // Substitutions; i.e., possible refinements.
   ) -> Type {
     match self {
-      Type::JSON | Type::Str | Type::Num => self.clone(),
+      Type::JSON | Type::Str | Type::Num | Type::Array | Type::Obj => self.clone(),
       Type::Var(tv) => subs.get(tv).unwrap_or(self).clone(),
       Type::Arr(t1, t2) => {
         Type::Arr(Box::new(t1.refine(subs)), Box::new(t2.refine(subs)))
@@ -78,7 +78,10 @@ impl Type {
         // This is left biased so we get a hacky version of subtyping: e.g.,
         // it's always fine to treat Num like a JSON, but not the other way
         // around.
-        (Type::Num, Type::JSON) | (Type::Str, Type::JSON)
+        (Type::Num, Type::JSON)
+          | (Type::Str, Type::JSON)
+          | (Type::Array, Type::JSON)
+          | (Type::Obj, Type::JSON)
       )
   }
 }
@@ -170,7 +173,7 @@ fn gather_constraints(
       Some(v) => Ok((v.clone(), Constraints::new())),
     },
     Expr::Arr(exprs) => Ok((
-      Type::JSON,
+      Type::Array,
       Constraints(exprs.iter().try_fold(Vec::new(), |mut acc, e| {
         let (t_e, mut con_e) = gather_constraints(state, e)?;
         acc.append(&mut con_e.0);
@@ -185,7 +188,7 @@ fn gather_constraints(
         acc.push((type_v, v.to_json_type()));
         Ok(acc)
       })?;
-      Ok((Type::JSON, Constraints(cons)))
+      Ok((Type::Obj, Constraints(cons)))
     },
     Expr::Lam(var, body) => {
       let tv = Type::Var(state.fresh_mut());

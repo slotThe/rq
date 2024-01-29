@@ -12,6 +12,8 @@ pub enum Type {
   Num,                       // A number.
   Str,                       // A string.
   JSON,                      // The JSON type: a black hole.
+  Array,                     // A JSON array
+  Obj,                       // A JSON object
   Arr(Box<Type>, Box<Type>), // A type arrow.
 }
 
@@ -24,6 +26,8 @@ impl Display for Type {
       Type::JSON => write!(f, "JSON"),
       Type::Num => write!(f, "Num"),
       Type::Str => write!(f, "String"),
+      Type::Array => write!(f, "[{}]", Type::JSON),
+      Type::Obj => write!(f, "{{{}}}", Type::JSON),
       Type::Var(v) => write!(
         f,
         "{}",
@@ -52,7 +56,7 @@ impl TVar {
     match t {
       Type::Var(tv) => tv == self,
       Type::Arr(t1, t2) => self.occurs_in(t1) || self.occurs_in(t2),
-      Type::JSON | Type::Str | Type::Num => false,
+      Type::JSON | Type::Str | Type::Num | Type::Array | Type::Obj => false,
     }
   }
 }
