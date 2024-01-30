@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::{self, Display}};
 
-use crate::r#type::{arr, t_or, Type};
+use crate::r#type::{arr, Type};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Builtin {
@@ -51,18 +51,12 @@ lazy_static! {
     StdFun {
       name:      Builtin::Get.show(),
       builtin:   Builtin::Get,
-      expr_type: t_or(
-        arr(Type::Num, arr(Type::Array, Type::JSON)),
-        arr(Type::Str, arr(Type::Obj, Type::JSON))
-      ),
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
     },
     StdFun {
       name:      Builtin::Map.show(),
       builtin:   Builtin::Map,
-      expr_type: arr(
-        arr(Type::JSON, Type::JSON),
-        arr(t_or(Type::Array, Type::Obj), Type::JSON)
-      ),
+      expr_type: arr(arr(Type::JSON, Type::JSON), arr(Type::JSON, Type::JSON)),
     }
   ];
 }

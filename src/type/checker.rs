@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use thiserror::Error;
 
-use super::{arr, t_or, TVar, Type};
-use crate::expr::{Const, Expr};
+use super::{arr, TVar, Type};
+use crate::expr::Expr;
 
 /// A type-checked expression.
 #[derive(Debug)]
@@ -50,10 +50,9 @@ impl Type {
     subs: &Substitutions, // Substitutions; i.e., possible refinements.
   ) -> Type {
     match self {
-      Type::JSON | Type::Str | Type::Num | Type::Array | Type::Obj => self.clone(),
+      Type::JSON => self.clone(),
       Type::Var(tv) => subs.get(tv).unwrap_or(self).clone(),
       Type::Arr(t1, t2) => arr(t1.refine(subs), t2.refine(subs)),
-      Type::Or(t1, t2) => t_or(t1.refine(subs), t2.refine(subs)),
     }
   }
 }
@@ -69,23 +68,6 @@ impl FromIterator<(Type, Type)> for Constraints {
   }
 }
 
-impl Type {
-  /// Check if the two given types unify.
-  fn unifies_with(&self, t2: &Type) -> bool {
-    self == t2
-      || matches!(
-        (self, t2),
-        // This is left biased so we get a hacky version of subtyping: e.g.,
-        // it's always fine to treat Num like a JSON, but not the other way
-        // around.
-        (Type::Num, Type::JSON)
-          | (Type::Str, Type::JSON)
-          | (Type::Array, Type::JSON)
-          | (Type::Obj, Type::JSON)
-      )
-  }
-}
-
 impl Constraints {
   /// Create a new constraint mapping.
   fn new() -> Constraints { Constraints(Vec::new()) }
@@ -95,19 +77,10 @@ impl Constraints {
     match self.0.pop() {
       None => Ok(HashMap::new()),
       Some((t1, t2)) => {
-        if t1.unifies_with(&t2) {
+        if t1 == t2 {
           self.unify()
         } else {
           let unify_error = Err(TypeCheckError::UnificationError(t1.clone(), t2.clone()));
-          // Unify a coproduct given constraints for the left and right side.
-          let mut unify_or = |l, r| -> Result<Substitutions, TypeCheckError> {
-            let mut constraints_l = self.clone();
-            constraints_l.0.push(l);
-            self.0.push(r);
-            self
-              .unify()
-              .or_else(|_| constraints_l.unify().or(unify_error.clone()))
-          };
           match (t1.clone(), t2.clone()) {
             (Type::Var(v), _) => self.substitute(v, &t2), // refine
             (_, Type::Var(v)) => self.substitute(v, &t1), // refine
@@ -115,8 +88,6 @@ impl Constraints {
               self.0.extend_from_slice(&[(*t1, *t3), (*t2, *t4)]); // add new constraints
               self.unify()
             },
-            (Type::Or(t3, t4), _) => unify_or((*t3, t2.clone()), (*t4, t2.clone())),
-            (_, Type::Or(t3, t4)) => unify_or((t2.clone(), *t3), (t2.clone(), *t4)),
             _ => unify_error,
           }
         }
@@ -164,33 +135,23 @@ impl State {
   }
 }
 
-impl Expr {
-  fn to_json_type(&self) -> Type {
-    match self {
-      Expr::Const(Const::Num(_)) => Type::Num,
-      Expr::Const(Const::String(_)) => Type::Str,
-      _ => Type::JSON,
-    }
-  }
-}
-
 /// Infer the type of an expression and gather constraints on it.
 fn gather_constraints(
   state: &mut State,
   expr: &Expr, // Gather constraints on the type of this.
 ) -> Result<(Type, Constraints), TypeCheckError> {
   match expr {
-    Expr::Const(_) => Ok((expr.to_json_type(), Constraints::new())),
+    Expr::Const(_) => Ok((Type::JSON, Constraints::new())),
     Expr::Var(v) => match state.ctx.get(v) {
       None => Err(TypeCheckError::VariableNotInScope(v.clone())),
       Some(v) => Ok((v.clone(), Constraints::new())),
     },
     Expr::Arr(exprs) => Ok((
-      Type::Array,
+      Type::JSON,
       Constraints(exprs.iter().try_fold(Vec::new(), |mut acc, e| {
         let (t_e, mut con_e) = gather_constraints(state, e)?;
         acc.append(&mut con_e.0);
-        acc.push((t_e, e.to_json_type()));
+        acc.push((t_e, Type::JSON));
         Ok(acc)
       })?),
     )),
@@ -198,10 +159,10 @@ fn gather_constraints(
       let cons = hm.iter().try_fold(Vec::new(), |mut acc, (_, v)| {
         let (type_v, mut con_v) = gather_constraints(state, v)?;
         acc.append(&mut con_v.0);
-        acc.push((type_v, v.to_json_type()));
+        acc.push((type_v, Type::JSON));
         Ok(acc)
       })?;
-      Ok((Type::Obj, Constraints(cons)))
+      Ok((Type::JSON, Constraints(cons)))
     },
     Expr::Lam(var, body) => {
       let tv = Type::Var(state.fresh_mut());
