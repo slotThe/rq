@@ -75,8 +75,8 @@ mod parser {
             obj(&[(
               "name",
               obj(&[
+                ("second", arr(&[num(10.0), Const(Null)])),
                 ("first", num(42.0)),
-                ("second", arr(&[num(10.0), Const(Null)]))
               ])
             )])
           ),

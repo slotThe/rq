@@ -52,10 +52,9 @@ impl Display for Expr {
 
 // Constructing expressions.
 pub fn app(e1: Expr, e2: Expr) -> Expr { Expr::App(Box::new(e1), Box::new(e2)) }
+pub fn var(v: &str) -> Expr { Expr::Var(v.to_string()) }
 #[cfg(test)]
 pub fn lam(h: &str, b: Expr) -> Expr { Expr::Lam(h.to_string(), Box::new(b)) }
-#[cfg(test)]
-pub fn var(v: &str) -> Expr { Expr::Var(v.to_string()) }
 #[cfg(test)]
 pub fn num(n: f64) -> Expr { Expr::Const(Const::Num(n)) }
 #[cfg(test)]

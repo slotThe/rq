@@ -1,6 +1,7 @@
 use anyhow::Result;
-use nom::{self, branch::{alt, Alt}, bytes::complete::{escaped, tag}, character::complete::{alpha1, alphanumeric0, alphanumeric1, multispace0, multispace1, one_of}, combinator::{all_consuming, map}, error::ParseError, multi::separated_list1, number::complete::double, sequence::{delimited, pair, preceded, terminated}, AsChar, Finish, IResult, InputTakeAtPosition, Parser};
+use nom::{self, branch::{alt, Alt}, bytes::complete::{escaped, tag}, character::complete::{alpha1, alphanumeric0, alphanumeric1, digit1, multispace0, one_of}, combinator::{all_consuming, map}, error::{Error, ParseError}, multi::{many0, separated_list1}, number::complete::double, sequence::{delimited, pair, preceded, terminated}, AsChar, Finish, IResult, InputTakeAtPosition, Parser};
 
+use super::{app, var};
 use crate::expr::{Const, Expr};
 
 pub fn parse(inp: &str) -> Result<Expr, nom::error::Error<&str>> {
@@ -8,7 +9,7 @@ pub fn parse(inp: &str) -> Result<Expr, nom::error::Error<&str>> {
 }
 
 fn p_expr(input: &str) -> IResult<&str, Expr> {
-  lalt((p_array, p_obj, p_app, p_lam, p_const, map(p_var, Expr::Var)))(input)
+  lalt((p_array, p_obj, p_const, p_app, p_lam, map(p_var, Expr::Var)))(input)
 }
 
 /// Parse a constant expression.
@@ -86,15 +87,33 @@ fn p_lam(input: &str) -> IResult<&str, Expr> {
   res
 }
 
+fn p_dotted<'a>(head: &Expr, input: &'a str) -> IResult<&'a str, Expr> {
+  match tag::<&str, &str, Error<&str>>(".")(input) {
+    Err(_) => Ok((input, head.clone())),
+    Ok((input, _)) => {
+      let (input, v) = alt((
+        map(digit1, |d: &str| Const::Num(d.parse::<f64>().unwrap())),
+        map(alt((alphanumeric1, p_str)), |s| {
+          Const::String(s.to_string())
+        }),
+      ))(input)?;
+      p_dotted(&app(app(var("get"), Expr::Const(v)), head.clone()), input)
+    },
+  }
+}
+
 /// Parse a function application.
 fn p_app(input: &str) -> IResult<&str, Expr> {
   let go = |input| {
-    // Only variable and parenthesised lambdas can represent functions.
-    let (input, fun) = lalt((lexeme(parens(p_lam)), map(p_var, Expr::Var)))(input)?;
-    let (input, targets) = separated_list1(
-      multispace1,
+    let (input, fun) = {
+      // Only variable and parenthesised lambdas can represent functions.
+      let (input, head) = lalt((lexeme(parens(p_lam)), map(p_var, Expr::Var)))(input)?;
+      // Check for dot syntax: x.1, x.blah
+      p_dotted(&head, input).or(Ok((input, head)))
+    }?;
+    let (input, targets) = many0(
       // p_var before p_app, so function application associates to the left.
-      alt((
+      lalt((
         map(p_var, Expr::Var),
         p_array,
         p_obj,
@@ -103,12 +122,7 @@ fn p_app(input: &str) -> IResult<&str, Expr> {
         p_const,
       )),
     )(input)?;
-    Ok((
-      input,
-      targets
-        .into_iter()
-        .fold(fun, |f, x| Expr::App(Box::new(f), Box::new(x))),
-    ))
+    Ok((input, targets.into_iter().fold(fun, app)))
   };
   try_parens(go)(input)
 }
