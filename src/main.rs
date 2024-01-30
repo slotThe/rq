@@ -1,3 +1,4 @@
+#![feature(trait_alias)]
 #![feature(extend_one)]
 #![feature(iter_intersperse)]
 #![feature(box_patterns)]
@@ -44,10 +45,14 @@ fn repl() -> Result<()> {
     match buffer.strip_prefix(":t ") {
       None => match buffer.strip_prefix(":d ") {
         // Normal expression
-        None => {
-          let tce = parse(&buffer).unwrap_or(NULL).check(&STDLIB_TYPES)?;
-          writeln!(out_handle, "{}", tce.eval(&STDLIB_CTX))?;
-        },
+        None => match parse(&buffer) {
+          Err(err) => writeln!(out_handle, "{}", err),
+          Ok(expr) => writeln!(
+            out_handle,
+            "{}",
+            expr.check(&STDLIB_TYPES)?.eval(&STDLIB_CTX)
+          ),
+        }?,
         // Desugared expression
         Some(buffer) => writeln!(out_handle, "{}", parse(buffer).unwrap().desugar())?,
       },
@@ -67,23 +72,14 @@ fn repl() -> Result<()> {
 fn oneshot() -> Result<()> {
   let mut input = String::new();
   io::stdin().read_to_string(&mut input)?;
-
-  let json: Value = serde_json::from_str(&input)?;
-  println!("Json: {json}");
-
-  let input_expr = &env::args().collect::<Vec<_>>()[1];
-  println!("Input expression: {input_expr}");
-  let expr = parse(input_expr).unwrap_or(NULL);
-  println!("Expression: {expr}");
-  let typ = expr.clone().infer(&STDLIB_TYPES)?;
-  println!("Inferred type: {typ}");
-  let dexpr = expr.desugar();
-  println!("Desugared expression: {dexpr}");
-
-  let expr_with_json = app(expr, json_to_expr(&json));
-  println!("Expression with JSON: {expr_with_json}");
-  let eval = expr_with_json.check(&STDLIB_TYPES)?.eval(&STDLIB_CTX);
-  println!("Evaluated expression: {eval}");
-
+  match parse(&env::args().collect::<Vec<_>>()[1]) {
+    Ok(expr) => println!(
+      "{}",
+      app(expr, json_to_expr(&serde_json::from_str(&input)?))
+        .check(&STDLIB_TYPES)?
+        .eval(&STDLIB_CTX)
+    ),
+    Err(err) => println!("{err}"),
+  }
   Ok(())
 }
