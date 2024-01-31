@@ -1,12 +1,12 @@
 mod parser {
-  use crate::expr::{app, arr, lam, num, obj, parser::parse, var, Const::*, Expr::*};
+  use crate::expr::{app, arr, expr_str, lam, num, obj, parser::parse, var, Const::*, Expr::*};
 
   macro_rules! parse_eq {
   ($left:expr, $right:expr $(,)?) => {
-    assert_eq!(&parse($left), &Ok($right))
+    assert_eq!(&parse($left), &Some($right))
   };
   ($left:expr, $right:expr, $($arg:tt)+) => {
-    assert_eq!(&parse($left), &Ok($right), $($arg)+)
+    assert_eq!(&parse($left), &Some($right), $($arg)+)
   };
 }
 
@@ -17,6 +17,22 @@ mod parser {
     parse_eq!(
       "map (|x| x) [1]",
       app(app(var("map"), lam("x", var("x"))), arr(&[num(1.0)]))
+    );
+    parse_eq!(
+      "|x| map (λy → [get 0 y, 2]) x",
+      lam(
+        "x",
+        app(
+          app(
+            var("map"),
+            lam(
+              "y",
+              arr(&[app(app(var("get"), num(0.0)), var("y")), num(2.0)])
+            )
+          ),
+          var("x")
+        )
+      )
     )
   }
 
@@ -81,6 +97,29 @@ mod parser {
             )])
           ),
           num(5.0)
+        )
+      )
+    )
+  }
+
+  #[test]
+  fn parses_dot_patterns() {
+    parse_eq!(
+      "\\x -> x.1.a.\"b\".c.4",
+      lam(
+        "x",
+        app(
+          app(var("get"), num(4.0)),
+          app(
+            app(var("get"), expr_str(r"c")),
+            app(
+              app(var("get"), expr_str("b")),
+              app(
+                app(var("get"), expr_str("a")),
+                app(app(var("get"), num(1.0)), var("x"))
+              )
+            )
+          )
         )
       )
     )

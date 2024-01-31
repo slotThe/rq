@@ -14,12 +14,9 @@ mod util;
 use std::{env, io::{self, BufRead, Read, Write}};
 
 use anyhow::Result;
-use expr::{parser::parse, Const, Expr};
-use serde_json::Value;
+use expr::{parser::{parse, parse_main}, Expr};
 
 use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{app, json::json_to_expr}};
-
-const NULL: Expr = Expr::Const(Const::Null);
 
 fn main() -> Result<()> {
   let arg = env::args().nth(1);
@@ -45,21 +42,27 @@ fn repl() -> Result<()> {
     match buffer.strip_prefix(":t ") {
       None => match buffer.strip_prefix(":d ") {
         // Normal expression
-        None => match parse(&buffer) {
-          Err(err) => writeln!(out_handle, "{}", err),
-          Ok(expr) => writeln!(
-            out_handle,
-            "{}",
-            expr.check(&STDLIB_TYPES)?.eval(&STDLIB_CTX)
-          ),
-        }?,
+        None => {
+          if let Some(expr) = parse_main(&buffer) {
+            let _ = match expr.check(&STDLIB_TYPES) {
+              Ok(expr) => writeln!(out_handle, "{}", expr.eval(&STDLIB_CTX)),
+              Err(err) => writeln!(out_handle, "{err}"),
+            };
+          }
+        },
         // Desugared expression
-        Some(buffer) => writeln!(out_handle, "{}", parse(buffer).unwrap().desugar())?,
+        Some(buffer) => {
+          parse_main(buffer).map(|e| writeln!(out_handle, "{}", e.desugar()));
+        },
       },
       // Type
       Some(buffer) => {
-        let inferred_type = &parse(buffer).unwrap_or(NULL).infer(&STDLIB_TYPES)?;
-        writeln!(out_handle, "{inferred_type}")?;
+        if let Some(expr) = parse_main(buffer) {
+          let _ = match expr.infer(&STDLIB_TYPES) {
+            Ok(typ) => writeln!(out_handle, "{typ}"),
+            Err(err) => writeln!(out_handle, "{err}"),
+          };
+        }
       },
     }
     write!(out_handle, "λ> ")?;
@@ -72,14 +75,13 @@ fn repl() -> Result<()> {
 fn oneshot() -> Result<()> {
   let mut input = String::new();
   io::stdin().read_to_string(&mut input)?;
-  match parse(&env::args().collect::<Vec<_>>()[1]) {
-    Ok(expr) => println!(
+  if let Some(expr) = parse(&env::args().collect::<Vec<_>>()[1]) {
+    println!(
       "{}",
       app(expr, json_to_expr(&serde_json::from_str(&input)?))
         .check(&STDLIB_TYPES)?
         .eval(&STDLIB_CTX)
-    ),
-    Err(err) => println!("{err}"),
+    )
   }
   Ok(())
 }
