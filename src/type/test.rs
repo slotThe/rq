@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
-
 use crate::{expr::parser::parse, r#type::{arr, TVar, Type}};
 
 #[test]
@@ -13,10 +11,10 @@ fn infer_type_of_S_combinator() {
   assert_eq!(
     typ,
     Ok(arr(
-      arr(Var(TVar(3)), arr(Var(TVar(5)), Var(TVar(6)))),
+      arr(Var(TVar(0)), arr(Var(TVar(1)), Var(TVar(2)))),
       arr(
-        arr(Var(TVar(3)), Var(TVar(5))),
-        arr(Var(TVar(3)), Var(TVar(6))),
+        arr(Var(TVar(0)), Var(TVar(1))),
+        arr(Var(TVar(0)), Var(TVar(2))),
       )
     ))
   );

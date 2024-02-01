@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 use thiserror::Error;
 
@@ -26,7 +26,42 @@ impl Expr {
       tvar: TVar(0),
     };
     let (raw_type, mut constrs) = gather_constraints(&mut state, self)?;
-    Ok(raw_type.refine(&constrs.unify()?))
+    let mut typ = raw_type.refine(&constrs.unify()?);
+    typ.normalise_mut();
+    Ok(typ)
+  }
+}
+
+impl Type {
+  /// Normalise all type variables; i.e., make them start at 0.
+  fn normalise_mut(&mut self) {
+    fn enum_tvars(tvars: &mut BTreeSet<TVar>, typ: &Type) {
+      match typ {
+        Type::JSON => {},
+        Type::Var(tvar) => {
+          tvars.insert(*tvar);
+        },
+        Type::Arr(t1, t2) => {
+          enum_tvars(tvars, t1);
+          enum_tvars(tvars, t2);
+        },
+      }
+    }
+    fn downscale(tvars: &HashMap<TVar, usize>, typ: &mut Type) {
+      match typ {
+        Type::Var(tvar) => {
+          tvar.0 = *tvars.get(tvar).unwrap();
+        },
+        Type::JSON => {},
+        Type::Arr(t1, t2) => {
+          downscale(tvars, t1);
+          downscale(tvars, t2);
+        },
+      }
+    }
+    let mut tvars = BTreeSet::new();
+    enum_tvars(&mut tvars, self);
+    downscale(&tvars.into_iter().zip(0..).collect(), self);
   }
 }
 

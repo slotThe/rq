@@ -20,11 +20,19 @@ impl Display for Type {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       Type::JSON => write!(f, "JSON"),
-      Type::Var(v) => write!(
-        f,
-        "{}",
-        std::char::from_u32((v.0 % 26 + 97) as u32).unwrap() // FIXME: :>
-      ),
+      Type::Var(v) => {
+        let (quot, rem) = (v.0 / 26, v.0 % 26);
+        write!(
+          f,
+          "{}{}",
+          char::from_u32((rem + 97) as u32).unwrap(),
+          if quot == 0 {
+            "".to_string()
+          } else {
+            quot.to_string()
+          }
+        )
+      },
       Type::Arr(box Type::Arr(t11, t12), t2) => write!(f, "({t11} → {t12}) → {t2}"),
       Type::Arr(t1, t2) => write!(f, "{t1} → {t2}"),
     }
@@ -32,7 +40,7 @@ impl Display for Type {
 }
 
 /// A type variable
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TVar(pub usize);
 
 impl Display for TVar {
