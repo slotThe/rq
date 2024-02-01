@@ -33,7 +33,19 @@ mod parser {
           var("x")
         )
       )
-    )
+    );
+    parse_eq!(
+      "(get 0) [0]",
+      app(app(var("get"), num(0.0)), arr(&[num(0.0)]))
+    );
+    parse_eq!(
+      "( ( ((( get 0 ))   )) [0]   )",
+      app(app(var("get"), num(0.0)), arr(&[num(0.0)]))
+    );
+    parse_eq!(
+      "((((get 0)))) [0]",
+      app(app(var("get"), num(0.0)), arr(&[num(0.0)]))
+    );
   }
 
   #[test]
@@ -53,7 +65,7 @@ mod parser {
     let lambda = lam("x", var("x"));
     parse_eq!("\\x -> x", lambda.clone());
     parse_eq!("λx → x", lambda.clone());
-    parse_eq!("|x| x", lambda);
+    parse_eq!("|  x  | x", lambda);
   }
 
   #[test]
@@ -80,7 +92,7 @@ mod parser {
   }
 
   #[test]
-  fn parses_objects_and_arrays() {
+  fn objects_and_arrays() {
     parse_eq!(
       "|f| f { \"name\": { \"first\": 42, \"second\": [ 10, null ] } } 5",
       lam(
@@ -103,7 +115,7 @@ mod parser {
   }
 
   #[test]
-  fn parses_dot_patterns() {
+  fn dot_patterns() {
     parse_eq!(
       "\\x -> x.1.a.\"b\".c.4",
       lam(

@@ -67,14 +67,13 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
         .labelled("string")
     };
 
-    let p_const = just("true")
-      .to(true)
-      .or(just("false").to(false))
-      .map(Const::Bool)
-      .or(just("null").to(Const::Null))
-      .or(p_num)
-      .or(p_str.map(Const::String))
-      .map(Expr::Const);
+    let p_const = (just("true")
+      .to(Const::Bool(true))
+      .or(just("false").to(Const::Bool(false))))
+    .or(just("null").to(Const::Null))
+    .or(p_num)
+    .or(p_str.map(Const::String))
+    .map(Expr::Const);
 
     let p_array = just('[')
       .padded()
@@ -115,7 +114,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       let haskell_head = (just("\\").or(just("λ")).padded())
         .ignore_then(p_var)
         .then_ignore(just("->").or(just("→")).padded());
-      let rust_head = p_var.delimited_by(just('|'), just('|')).padded();
+      let rust_head = p_var.padded().delimited_by(just('|'), just('|'));
       haskell_head
         .or(rust_head)
         .padded()
@@ -126,12 +125,10 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
 
     let p_app = recursive(|p_app| {
       let fun = {
-        // Only variable and parenthesised lambdas can represent functions.
-        let head = p_lam
-          .clone()
-          .delimited_by(just('('), just(')'))
+        // The f in f x.
+        let head = (p_lam.clone().padded().delimited_by(just('('), just(')')))
           .or(p_var.map(Expr::Var))
-          .padded();
+          .or(p_app.clone().padded().delimited_by(just('('), just(')')));
         // Check for dot syntax: x.1, x.blah, …
         head
           .then(
@@ -147,21 +144,20 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
           .foldl(|acc, c| app(app(var("get"), c), acc))
       };
       let go = fun
+        // the x in f x.
         .then(
-          p_var
-            .map(Expr::Var)
+          ((p_var.map(Expr::Var))
+            .or(p_const.clone())
             .or(p_array.clone())
             .or(p_obj.clone())
-            .or(p_lam.clone().delimited_by(just('('), just(')')))
-            .or(p_app)
-            .or(p_const.clone())
-            .padded()
-            .repeated(),
+            .or(p_lam.clone().padded().delimited_by(just('('), just(')')))
+            .or(p_app))
+          .padded()
+          .repeated(),
         )
         .foldl(app);
-      go.clone()
-        .delimited_by(just('('), just(')'))
-        .or(go)
+      (go.clone())
+        .or(go.clone().padded().delimited_by(just('('), just(')')))
         .padded()
         .labelled("application")
     });
@@ -175,7 +171,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
   })
 }
 
-/// Parse an expression.
+#[cfg(test)]
 pub fn parse(inp: &str) -> Result<Expr, Vec<Simple<char>>> {
   p_expr().then_ignore(end()).parse(inp.trim())
 }
