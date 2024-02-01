@@ -176,11 +176,8 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
 }
 
 /// Parse an expression.
-pub fn parse(inp: &str) -> Option<Expr> {
-  match p_expr().then_ignore(end()).parse_recovery(inp.trim()) {
-    (Some(expr), _) => Some(expr),
-    _ => None,
-  }
+pub fn parse(inp: &str) -> Result<Expr, Vec<Simple<char>>> {
+  p_expr().then_ignore(end()).parse(inp.trim())
 }
 
 /// Parse an expression.

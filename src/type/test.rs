@@ -6,7 +6,7 @@ use crate::{expr::parser::parse, r#type::{arr, TVar, Type}};
 
 #[test]
 #[allow(non_snake_case)]
-fn infer_type_of_S_combinator() -> Result<()> {
+fn infer_type_of_S_combinator() {
   use Type::*;
   let expr = parse("λf -> λg → |x| f x (g x)").unwrap();
   let typ = expr.infer(&HashMap::new());
@@ -20,5 +20,4 @@ fn infer_type_of_S_combinator() -> Result<()> {
       )
     ))
   );
-  Ok(())
 }

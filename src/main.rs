@@ -14,7 +14,7 @@ mod util;
 use std::{env, io::{self, BufRead, Read, Write}};
 
 use anyhow::Result;
-use expr::{parser::{parse, parse_main}, Expr};
+use expr::{parser::parse_main, Expr};
 
 use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{app, json::json_to_expr}};
 
@@ -75,7 +75,7 @@ fn repl() -> Result<()> {
 fn oneshot() -> Result<()> {
   let mut input = String::new();
   io::stdin().read_to_string(&mut input)?;
-  if let Some(expr) = parse(&env::args().collect::<Vec<_>>()[1]) {
+  if let Some(expr) = parse_main(&env::args().collect::<Vec<_>>()[1]) {
     println!(
       "{}",
       app(expr, json_to_expr(&serde_json::from_str(&input)?))
