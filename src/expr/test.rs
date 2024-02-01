@@ -39,12 +39,12 @@ mod parser {
       app(app(var("get"), num(0.0)), arr(&[num(0.0)]))
     );
     parse_eq!(
-      "( ( ((( get 0 ))   )) [0]   )",
+      "   ( ( ((( get 0 ))   )) [0]   )  ",
       app(app(var("get"), num(0.0)), arr(&[num(0.0)]))
     );
     parse_eq!(
-      "((((get 0)))) [0]",
-      app(app(var("get"), num(0.0)), arr(&[num(0.0)]))
+      "((((get  0)))) [ 0 ,1]",
+      app(app(var("get"), num(0.0)), arr(&[num(0.0), num(1.0)]))
     );
   }
 
@@ -52,6 +52,8 @@ mod parser {
   fn whitespace() {
     parse_eq!("[ 1 ,   5]", arr(&[num(1.0), num(5.0)]));
     parse_eq!("[ 1,5    ]", arr(&[num(1.0), num(5.0)]));
+    parse_eq!("[ 1, 5]", arr(&[num(1.0), num(5.0)]));
+    parse_eq!("[ 1 ,5]", arr(&[num(1.0), num(5.0)]));
     parse_eq!("{\"a\":[1]}", obj(&[("a", arr(&[num(1.0)]))]));
     parse_eq!("{ \"a\"  :[1] }", obj(&[("a", arr(&[num(1.0)]))]));
     parse_eq!("{\"a\":  [1] }", obj(&[("a", arr(&[num(1.0)]))]));

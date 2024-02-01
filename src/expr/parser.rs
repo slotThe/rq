@@ -80,6 +80,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       .ignore_then(
         p_expr
           .clone()
+          .padded()
           .chain(just(',').padded().ignore_then(p_expr.clone()).repeated())
           .or_not()
           .flatten()
