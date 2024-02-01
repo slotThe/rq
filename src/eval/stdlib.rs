@@ -57,6 +57,6 @@ lazy_static! {
       name:      Builtin::Map.show(),
       builtin:   Builtin::Map,
       expr_type: arr(arr(Type::JSON, Type::JSON), arr(Type::JSON, Type::JSON)),
-    }
+    },
   ];
 }

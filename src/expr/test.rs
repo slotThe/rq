@@ -138,6 +138,58 @@ mod parser {
       )
     )
   }
+
+  #[test]
+  fn pipes() {
+    parse_eq!(
+      "get 0 | get \"phones\" | get 0",
+      lam(
+        "x",
+        app(
+          app(var("get"), num(0.0)),
+          app(
+            lam(
+              "x",
+              app(
+                app(var("get"), expr_str("phones")),
+                app(app(var("get"), num(0.0)), var("x"))
+              )
+            ),
+            var("x")
+          )
+        )
+      )
+    );
+    parse_eq!(
+      "map (\\x -> x.id) | get 0",
+      lam(
+        "x",
+        app(
+          app(var("get"), num(0.0)),
+          app(
+            app(
+              var("map"),
+              lam("x", app(app(var("get"), expr_str("id")), var("x")))
+            ),
+            var("x")
+          )
+        )
+      )
+    );
+    parse_eq!(
+      "get 0 | \\x -> { name: x.name }",
+      lam(
+        "x",
+        app(
+          lam(
+            "x",
+            obj(&[("name", app(app(var("get"), expr_str("name")), var("x")))])
+          ),
+          app(app(var("get"), num(0.0)), var("x"))
+        )
+      )
+    )
+  }
 }
 
 mod evaluator {

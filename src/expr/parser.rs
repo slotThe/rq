@@ -163,12 +163,21 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
         .labelled("application")
     });
 
-    p_obj
+    let all_exprs = p_obj
       .or(p_array)
       .or(p_const)
       .or(p_app)
       .or(p_lam)
-      .or(p_var.map(Expr::Var))
+      .or(p_var.map(Expr::Var));
+
+    (all_exprs.clone())
+      .then(
+        (just('|').padded())
+          .ignore_then(all_exprs.separated_by(just('|').padded()))
+          .or_not()
+          .flatten(),
+      )
+      .foldl(|acc, e| lam("x", app(e, app(acc, var("x"))))) // XXX
   })
 }
 
