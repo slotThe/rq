@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
-use super::{app, lam, var, Const};
+use super::{app, if_then_else, lam, var, Const};
 use crate::Expr;
 
 // Lots stolen from https://github.com/zesterer/chumsky/blob/0.9/examples/json.rs
@@ -14,7 +14,16 @@ use crate::Expr;
 // I can return to nom.
 fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
   recursive(|p_expr| {
-    let p_var = text::ident();
+    // You might think that I need a lexer; and you would be right.
+    let p_var = text::ident().try_map(
+      move |s: <char as chumsky::text::Character>::Collection, span| {
+        if ["if", "then", "else"].contains(&s.as_str()) {
+          Err(Simple::expected_input_found(span, None, None))
+        } else {
+          Ok(s)
+        }
+      },
+    );
 
     let p_num = {
       let frac = just('.').chain(text::digits(10));
@@ -119,10 +128,18 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       haskell_head
         .or(rust_head)
         .padded()
-        .then(p_expr)
+        .then(p_expr.clone())
         .map(|(h, b)| lam(h.as_str(), b))
         .labelled("lambda")
     };
+
+    let p_if_then_else = (just("if").padded())
+      .ignore_then(p_expr.clone())
+      .then_ignore(just("then").padded())
+      .then(p_expr.clone())
+      .then_ignore(just("else").padded())
+      .then(p_expr.clone())
+      .map(|((i, t), e)| if_then_else(i, t, e));
 
     let p_app = recursive(|p_app| {
       let fun = {
@@ -147,7 +164,8 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       let go = fun
         // the x in f x.
         .then(
-          ((p_var.map(Expr::Var))
+          (p_var.map(Expr::Var)
+            .or(p_if_then_else.clone())
             .or(p_const.clone())
             .or(p_array.clone())
             .or(p_obj.clone())
@@ -166,6 +184,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
     let all_exprs = p_obj
       .or(p_array)
       .or(p_const)
+      .or(p_if_then_else)
       .or(p_app)
       .or(p_lam)
       .or(p_var.map(Expr::Var));

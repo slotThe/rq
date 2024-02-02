@@ -5,6 +5,8 @@ use crate::{expr::Const, r#type::checker::TCExpr};
 
 pub mod desugar;
 pub mod stdlib;
+#[cfg(test)]
+pub mod test;
 
 impl TCExpr {
   /// Evaluate a type-checked expression into its normal form.
@@ -35,6 +37,7 @@ enum Sem {
   App(Box<Sem>, Box<Sem>),
   Arr(Vec<Sem>),
   Obj(HashMap<String, Sem>),
+  IfThenElse(Box<Sem>, Box<Sem>, Box<Sem>),
   SBuiltin(Builtin),
 }
 
@@ -62,6 +65,15 @@ impl DExpr {
           )
         })
         .clone(),
+      DExpr::IfThenElse(i, t, e) => match i.to_sem(env) {
+        Sem::SConst(Const::Bool(false)) | Sem::SConst(Const::Null) => e.to_sem(env),
+        Sem::SConst(_) => t.to_sem(env),
+        isem => Sem::IfThenElse(
+          Box::new(isem),
+          Box::new(t.to_sem(env)),
+          Box::new(e.to_sem(env)),
+        ),
+      },
     }
   }
 }
@@ -121,6 +133,11 @@ impl Sem {
         Sem::Obj(ob) => {
           DExpr::Obj(ob.iter().map(|(k, v)| (k.clone(), go(names, v))).collect())
         },
+        Sem::IfThenElse(i, t, e) => DExpr::IfThenElse(
+          Box::new(go(names, i)),
+          Box::new(go(names, t)),
+          Box::new(go(names, e)),
+        ),
         Sem::SBuiltin(f) => DExpr::Builtin(*f),
       }
     }

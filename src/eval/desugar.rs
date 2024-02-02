@@ -11,6 +11,7 @@ pub enum DExpr {
   App(Box<DExpr>, Box<DExpr>),
   Arr(Vec<DExpr>),
   Obj(HashMap<String, DExpr>),
+  IfThenElse(Box<DExpr>, Box<DExpr>, Box<DExpr>),
   Builtin(Builtin),
 }
 
@@ -23,6 +24,7 @@ impl Display for DExpr {
       DExpr::App(g, x) => write!(f, "({g})⟨{x}⟩"),
       DExpr::Arr(xs) => fmt_array(xs, f),
       DExpr::Obj(hm) => fmt_object(hm, f),
+      DExpr::IfThenElse(i, t, e) => write!(f, "if {i} then {t} else {e}"),
       DExpr::Builtin(b) => write!(f, "{b}"),
     }
   }
@@ -41,6 +43,11 @@ impl Expr {
         hm.iter()
           .map(|(k, v)| (k.to_owned(), v.desugar()))
           .collect(),
+      ),
+      Expr::IfThenElse(i, t, e) => DExpr::IfThenElse(
+        Box::new(i.desugar()),
+        Box::new(t.desugar()),
+        Box::new(e.desugar()),
       ),
     }
   }

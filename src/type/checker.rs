@@ -213,5 +213,15 @@ fn gather_constraints(
       constraints.0.push((type_f, arr(type_x, ret_type.clone())));
       Ok((ret_type, constraints))
     },
+    Expr::IfThenElse(i, t, e) => {
+      let (type_i, con_i) = gather_constraints(state, i)?;
+      let (type_t, con_t) = gather_constraints(state, t)?;
+      let (type_e, con_e) = gather_constraints(state, e)?;
+      let mut constraints = Constraints([con_i.0, con_t.0, con_e.0].concat());
+      constraints
+        .0
+        .extend_from_slice(&[(type_t.clone(), type_e), (Type::JSON, type_i)]);
+      Ok((type_t, constraints))
+    },
   }
 }

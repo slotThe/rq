@@ -35,6 +35,7 @@ pub enum Expr {
   App(Box<Expr>, Box<Expr>),
   Arr(Vec<Expr>),
   Obj(HashMap<String, Expr>),
+  IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
 }
 
 impl Display for Expr {
@@ -46,6 +47,7 @@ impl Display for Expr {
       Expr::App(g, x) => write!(f, "({g})⟨{x}⟩"),
       Expr::Arr(xs) => fmt_array(xs, f),
       Expr::Obj(hm) => fmt_object(hm, f),
+      Expr::IfThenElse(i, t, e) => write!(f, "if {i} then {t} else {e}"),
     }
   }
 }
@@ -54,6 +56,9 @@ impl Display for Expr {
 pub fn app(e1: Expr, e2: Expr) -> Expr { Expr::App(Box::new(e1), Box::new(e2)) }
 pub fn var(v: &str) -> Expr { Expr::Var(v.to_string()) }
 pub fn lam(h: &str, b: Expr) -> Expr { Expr::Lam(h.to_string(), Box::new(b)) }
+pub fn if_then_else(i: Expr, t: Expr, e: Expr) -> Expr {
+  Expr::IfThenElse(Box::new(i), Box::new(t), Box::new(e))
+}
 #[cfg(test)]
 pub fn num(n: f64) -> Expr { Expr::Const(Const::Num(n)) }
 #[cfg(test)]

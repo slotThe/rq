@@ -1,5 +1,5 @@
 mod parser {
-  use crate::expr::{app, arr, expr_str, lam, num, obj, parser::parse, var, Const::*, Expr::*};
+  use crate::expr::{app, arr, expr_str, if_then_else, lam, num, obj, parser::parse, var, Const::*, Expr::*};
 
   macro_rules! parse_eq {
   ($left:expr, $right:expr $(,)?) => {
@@ -125,7 +125,7 @@ mod parser {
         app(
           app(var("get"), num(4.0)),
           app(
-            app(var("get"), expr_str(r"c")),
+            app(var("get"), expr_str("c")),
             app(
               app(var("get"), expr_str("b")),
               app(
@@ -187,6 +187,46 @@ mod parser {
           ),
           app(app(var("get"), num(0.0)), var("x"))
         )
+      )
+    )
+  }
+
+  #[test]
+  fn parse_if_then_else() {
+    parse_eq!(
+      "if null then 2 else 5",
+      if_then_else(Const(Null), num(2.0), num(5.0))
+    );
+    parse_eq!(
+      "if (get \"this\" { this: 3 }) then 1 else 4",
+      if_then_else(
+        app(
+          app(var("get"), expr_str("this")),
+          obj(&[("this", num(3.0))])
+        ),
+        num(1.0),
+        num(4.0)
+      )
+nn    );
+    parse_eq!(
+      "if get \"this\" then 1 else 4",
+      if_then_else(app(var("get"), expr_str("this")), num(1.0), num(4.0))
+    );
+    parse_eq!(
+      "if \\x -> map (\\y -> get 0 y) x then 1 else 4",
+      if_then_else(
+        lam(
+          "x",
+          app(
+            app(
+              var("map"),
+              lam("y", app(app(var("get"), num(0.0)), var("y")))
+            ),
+            var("x")
+          )
+        ),
+        num(1.0),
+        num(4.0)
       )
     )
   }
