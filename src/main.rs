@@ -39,28 +39,26 @@ fn repl() -> Result<()> {
   out_handle.flush()?; // Write to stdout.
 
   while in_handle.read_line(&mut buffer).is_ok() {
-    match buffer.strip_prefix(":t ") {
-      None => match buffer.strip_prefix(":d ") {
-        // Normal expression
-        None => {
-          if let Some(expr) = parse_main(&buffer) {
-            let _ = match expr.check(&STDLIB_TYPES) {
-              Ok(expr) => writeln!(out_handle, "{}", expr.eval(&STDLIB_CTX)),
-              Err(err) => writeln!(out_handle, "{err}"),
-            };
-          }
-        },
-        // Desugared expression
-        Some(buffer) => {
-          parse_main(buffer).map(|e| writeln!(out_handle, "{}", e.desugar()));
-        },
+    match &buffer {
+      _ if buffer.starts_with(":d ") => {
+        parse_main(&buffer[3..]).map(|e| writeln!(out_handle, "{}", e.desugar()));
       },
-      // Type
-      Some(buffer) => {
-        if let Some(expr) = parse_main(buffer) {
-          let _ = match expr.infer(&STDLIB_TYPES) {
-            Ok(typ) => writeln!(out_handle, "{typ}"),
-            Err(err) => writeln!(out_handle, "{err}"),
+      _ if buffer.starts_with(":debug ") => {
+        parse_main(&buffer[7..]).map(|e| writeln!(out_handle, "{:?}", e));
+      },
+      _ if buffer.starts_with(":t ") => {
+        if let Some(expr) = parse_main(&buffer[3..]) {
+          match expr.infer(&STDLIB_TYPES) {
+            Ok(typ) => writeln!(out_handle, "{typ}")?,
+            Err(err) => writeln!(out_handle, "{err}")?,
+          };
+        }
+      },
+      _ => {
+        if let Some(expr) = parse_main(&buffer) {
+          match expr.check(&STDLIB_TYPES) {
+            Ok(expr) => writeln!(out_handle, "{}", expr.eval(&STDLIB_CTX))?,
+            Err(err) => writeln!(out_handle, "{err}")?,
           };
         }
       },
