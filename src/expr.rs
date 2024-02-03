@@ -1,4 +1,6 @@
-use std::{collections::HashMap, fmt::{self, Display}};
+use std::{collections::BTreeMap, fmt::{self, Display}};
+
+use ordered_float::OrderedFloat;
 
 use crate::util::{fmt_array, fmt_object};
 
@@ -7,9 +9,9 @@ pub mod parser;
 #[cfg(test)]
 pub mod test;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Const {
-  Num(f64),
+  Num(OrderedFloat<f64>),
   Bool(bool),
   Null,
   String(String),
@@ -27,14 +29,14 @@ impl Display for Const {
 }
 
 /// An expression as the user entered it (containing syntactic sugar).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Expr {
   Const(Const),
   Var(String),
   Lam(String, Box<Expr>),
   App(Box<Expr>, Box<Expr>),
   Arr(Vec<Expr>),
-  Obj(HashMap<String, Expr>),
+  Obj(BTreeMap<Expr, Expr>),
   IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
 }
 
@@ -60,13 +62,11 @@ pub fn lam(h: &str, b: Expr) -> Expr { Expr::Lam(h.to_string(), Box::new(b)) }
 pub fn if_then_else(i: Expr, t: Expr, e: Expr) -> Expr {
   Expr::IfThenElse(Box::new(i), Box::new(t), Box::new(e))
 }
-#[cfg(test)]
-pub fn num(n: f64) -> Expr { Expr::Const(Const::Num(n)) }
+pub fn num(n: f64) -> Expr { Expr::Const(Const::Num(OrderedFloat(n))) }
+pub fn expr_str<S: ToString>(s: S) -> Expr { Expr::Const(Const::String(s.to_string())) }
 #[cfg(test)]
 pub fn arr(xs: &[Expr]) -> Expr { Expr::Arr(xs.to_vec()) }
 #[cfg(test)]
 pub fn obj(xs: &[(&str, Expr)]) -> Expr {
-  Expr::Obj(xs.iter().map(|(k, v)| (k.to_string(), v.clone())).collect())
+  Expr::Obj(xs.iter().map(|(k, v)| (expr_str(k), v.clone())).collect())
 }
-#[cfg(test)]
-pub fn expr_str(s: &str) -> Expr { Expr::Const(Const::String(s.to_string())) }

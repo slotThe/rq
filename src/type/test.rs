@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::{expr::parser::parse, r#type::{arr, TVar, Type}};
 
@@ -7,7 +7,7 @@ use crate::{expr::parser::parse, r#type::{arr, TVar, Type}};
 fn infer_type_of_S_combinator() {
   use Type::*;
   let expr = parse("λf -> λg → |x| f x (g x)").unwrap();
-  let typ = expr.infer(&HashMap::new());
+  let typ = expr.infer(&BTreeMap::new());
   assert_eq!(
     typ,
     Ok(arr(

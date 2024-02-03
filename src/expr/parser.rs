@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
-use super::{app, if_then_else, lam, var, Const};
+use super::{app, expr_str, if_then_else, lam, num, var, Const};
 use crate::Expr;
 
 // Lots stolen from https://github.com/zesterer/chumsky/blob/0.9/examples/json.rs
@@ -100,9 +100,9 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       .labelled("array");
 
     let p_obj = {
-      let p_kv = p_var
-        .or(p_str)
+      let p_kv = (p_var.or(p_str).map(|s| Expr::Const(Const::String(s))))
         .then_ignore(just(':').padded())
+        .or(p_expr.clone().then_ignore(just(':').padded()))
         .then(p_expr.clone());
       just('{')
         .padded()
@@ -115,7 +115,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
             .padded()
             .then_ignore(just('}').padded()),
         )
-        .collect::<HashMap<String, Expr>>()
+        .collect::<BTreeMap<Expr, Expr>>()
         .map(Expr::Obj)
         .labelled("object")
     };
@@ -153,10 +153,9 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
             just('.')
               .ignore_then(
                 text::int(10)
-                  .map(|i: String| Const::Num(i.parse::<f64>().unwrap()))
-                  .or(p_var.or(p_str).map(Const::String)),
+                  .map(|i: String| num(i.parse::<f64>().unwrap()))
+                  .or(p_var.or(p_str).map(expr_str)),
               )
-              .map(Expr::Const)
               .repeated(),
           )
           .foldl(|acc, c| app(app(var("get"), c), acc))

@@ -1,16 +1,16 @@
-use std::{collections::HashMap, fmt::{self, Display}};
+use std::{collections::BTreeMap, fmt::{self, Display}};
 
 use crate::{eval::stdlib::Builtin, expr::{Const, Expr}, util::{fmt_array, fmt_object}};
 
 /// A desugared expression.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DExpr {
   Const(Const),
   Var(String),
   Lam(String, Box<DExpr>),
   App(Box<DExpr>, Box<DExpr>),
   Arr(Vec<DExpr>),
-  Obj(HashMap<String, DExpr>),
+  Obj(BTreeMap<DExpr, DExpr>),
   IfThenElse(Box<DExpr>, Box<DExpr>, Box<DExpr>),
   Builtin(Builtin),
 }
@@ -40,11 +40,9 @@ impl Expr {
       Expr::Lam(v, e) => DExpr::Lam(v.clone(), Box::new(e.desugar())),
       Expr::App(f, x) => DExpr::App(Box::new(f.desugar()), Box::new(x.desugar())),
       Expr::Arr(xs) => DExpr::Arr(xs.iter().map(|x| x.desugar()).collect()),
-      Expr::Obj(hm) => DExpr::Obj(
-        hm.iter()
-          .map(|(k, v)| (k.to_owned(), v.desugar()))
-          .collect(),
-      ),
+      Expr::Obj(hm) => {
+        DExpr::Obj(hm.iter().map(|(k, v)| (k.desugar(), v.desugar())).collect())
+      },
       Expr::IfThenElse(i, t, e) => DExpr::IfThenElse(
         Box::new(i.desugar()),
         Box::new(t.desugar()),

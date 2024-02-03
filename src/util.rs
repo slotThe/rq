@@ -1,14 +1,14 @@
-use std::{collections::HashMap, fmt::{self, Display}};
+use std::{collections::BTreeMap, fmt::{self, Display}};
 
 pub fn fmt_object<T: Display>(
-  hm: &HashMap<String, T>,
+  hm: &BTreeMap<T, T>,
   f: &mut fmt::Formatter,
 ) -> fmt::Result {
   write!(
     f,
     "{{ {} }}",
     hm.iter()
-      .map(|(k, v)| k.to_owned() + ": " + &v.to_string())
+      .map(|(k, v)| k.to_string() + ": " + &v.to_string())
       .intersperse(", ".to_string())
       .collect::<String>(),
   )

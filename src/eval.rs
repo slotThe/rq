@@ -1,4 +1,6 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+
+use ordered_float::OrderedFloat;
 
 use self::{desugar::DExpr, stdlib::Builtin};
 use crate::{expr::Const, r#type::checker::TCExpr};
@@ -10,7 +12,7 @@ pub mod test;
 
 impl TCExpr {
   /// Evaluate a type-checked expression into its normal form.
-  pub fn eval(&self, env: &HashMap<&str, Builtin>) -> DExpr {
+  pub fn eval(&self, env: &BTreeMap<&str, Builtin>) -> DExpr {
     self.expr.desugar()
       // Normalisation by evaluation.
       .to_sem(&Rc::new(RefCell::new(
@@ -26,17 +28,17 @@ impl TCExpr {
 // same name might occur deeper inside of expressions. However, I've
 // completely ignored DeBruijn indices for now, so that would need to be
 // addressed first.
-type Env = Rc<RefCell<HashMap<String, Sem>>>;
+type Env = Rc<RefCell<BTreeMap<String, Sem>>>;
 
 /// A semantic representation of a term.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Sem {
   Var(String),
   SConst(Const),
   Closure(Env, String, Box<DExpr>),
   App(Box<Sem>, Box<Sem>),
   Arr(Vec<Sem>),
-  Obj(HashMap<String, Sem>),
+  Obj(BTreeMap<Sem, Sem>),
   IfThenElse(Box<Sem>, Box<Sem>, Box<Sem>),
   SBuiltin(Builtin),
 }
@@ -51,9 +53,11 @@ impl DExpr {
       DExpr::Lam(h, b) => Sem::Closure(env.clone(), h.to_string(), b.clone()),
       DExpr::App(f, x) => f.to_sem(env).apply(&x.to_sem(env)),
       DExpr::Arr(xs) => Sem::Arr(xs.iter().map(|x| x.to_sem(env)).collect()),
-      DExpr::Obj(ob) => {
-        Sem::Obj(ob.iter().map(|(k, v)| (k.clone(), v.to_sem(env))).collect())
-      },
+      DExpr::Obj(ob) => Sem::Obj(
+        ob.iter()
+          .map(|(k, v)| (k.to_sem(env), v.to_sem(env)))
+          .collect(),
+      ),
       DExpr::Builtin(f) => Sem::SBuiltin(*f),
       DExpr::Var(v) => env
         .borrow()
@@ -94,12 +98,13 @@ impl Sem {
       (SBuiltin(_), _) => app(self, x),
       (App(box SBuiltin(BConst), this), _) => *this.clone(),
       // Get
-      (App(box SBuiltin(Get), box SConst(Const::Num(i))), Arr(xs)) => {
+      (App(box SBuiltin(Get), box SConst(Const::Num(OrderedFloat(i)))), Arr(xs)) => {
         xs[*i as usize].clone() // FIXME: Should we check?
       },
-      (App(box SBuiltin(Get), box SConst(Const::String(s))), Obj(ob)) => {
-        ob.get(s).unwrap().clone()
-      },
+      (App(box SBuiltin(Get), box SConst(Const::String(s))), Obj(ob)) => ob
+        .get(&Sem::SConst(Const::String(s.to_string())))
+        .unwrap()
+        .clone(),
       // Map
       (App(box SBuiltin(Map), closure), Arr(xs)) => {
         Arr(xs.iter().map(|x| closure.apply(x)).collect())
@@ -130,9 +135,11 @@ impl Sem {
         },
         Sem::App(f, x) => DExpr::App(Box::new(go(names, f)), Box::new(go(names, x))),
         Sem::Arr(xs) => DExpr::Arr(xs.iter().map(|x| go(names, x)).collect()),
-        Sem::Obj(ob) => {
-          DExpr::Obj(ob.iter().map(|(k, v)| (k.clone(), go(names, v))).collect())
-        },
+        Sem::Obj(ob) => DExpr::Obj(
+          ob.iter()
+            .map(|(k, v)| (go(names, k), go(names, v)))
+            .collect(),
+        ),
         Sem::IfThenElse(i, t, e) => DExpr::IfThenElse(
           Box::new(go(names, i)),
           Box::new(go(names, t)),

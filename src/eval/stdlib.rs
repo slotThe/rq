@@ -1,8 +1,8 @@
-use std::{collections::HashMap, fmt::{self, Display}};
+use std::{collections::BTreeMap, fmt::{self, Display}};
 
 use crate::r#type::{arr, Type};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Builtin {
   Id,
   BConst,
@@ -33,10 +33,10 @@ pub struct StdFun {
 }
 
 lazy_static! {
-  pub static ref STDLIB_CTX: HashMap<&'static str, Builtin> =
-    HashMap::from(STDLIB.clone().map(|f| (f.name, f.builtin)));
-  pub static ref STDLIB_TYPES: HashMap<String, Type> =
-    HashMap::from(STDLIB.clone().map(|f| (f.name.to_string(), f.expr_type)));
+  pub static ref STDLIB_CTX: BTreeMap<&'static str, Builtin> =
+    BTreeMap::from(STDLIB.clone().map(|f| (f.name, f.builtin)));
+  pub static ref STDLIB_TYPES: BTreeMap<String, Type> =
+    BTreeMap::from(STDLIB.clone().map(|f| (f.name.to_string(), f.expr_type)));
   pub static ref STDLIB: [StdFun; 4] = [
     StdFun {
       name:      Builtin::Id.show(),

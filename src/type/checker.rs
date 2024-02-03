@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use thiserror::Error;
 
@@ -13,14 +13,14 @@ pub struct TCExpr {
 
 impl Expr {
   // Verify that the given expression has a valid type.
-  pub fn check(&self, ctx: &HashMap<String, Type>) -> Result<TCExpr, TypeCheckError> {
+  pub fn check(&self, ctx: &BTreeMap<String, Type>) -> Result<TCExpr, TypeCheckError> {
     self.infer(ctx)?;
     Ok(TCExpr { expr: self.clone() })
   }
 
   /// Infer the type of an expression. Returns the desugared expression with
   /// its associated type.
-  pub fn infer(&self, ctx: &HashMap<String, Type>) -> Result<Type, TypeCheckError> {
+  pub fn infer(&self, ctx: &BTreeMap<String, Type>) -> Result<Type, TypeCheckError> {
     let mut state = State {
       ctx:  ctx.clone(),
       tvar: TVar(0),
@@ -156,7 +156,7 @@ impl Constraints {
 struct State {
   /// Typing context containing resolved constraints of the form
   /// variable → its type.
-  ctx:  HashMap<String, Type>,
+  ctx:  BTreeMap<String, Type>,
   /// Number of type variables in use.
   tvar: TVar,
 }
@@ -191,10 +191,11 @@ fn gather_constraints(
       })?),
     )),
     Expr::Obj(hm) => {
-      let cons = hm.iter().try_fold(Vec::new(), |mut acc, (_, v)| {
-        let (type_v, mut con_v) = gather_constraints(state, v)?;
-        acc.append(&mut con_v.0);
-        acc.push((type_v, Type::JSON));
+      let cons = hm.iter().try_fold(Vec::new(), |mut acc, (k, v)| {
+        let (type_k, con_k) = gather_constraints(state, k)?;
+        let (type_v, con_v) = gather_constraints(state, v)?;
+        acc.extend_from_slice(&[con_k.0, con_v.0].concat());
+        acc.extend_from_slice(&[(type_k, Type::JSON), (type_v, Type::JSON)]);
         Ok(acc)
       })?;
       Ok((Type::JSON, Constraints(cons)))
