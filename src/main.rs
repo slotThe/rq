@@ -40,8 +40,8 @@ fn repl() -> Result<()> {
 
   while in_handle.read_line(&mut buffer).is_ok() {
     match &buffer {
-      _ if buffer.starts_with(":d ") => {
-        parse_main(&buffer[3..]).map(|e| writeln!(out_handle, "{}", e.desugar()));
+      _ if buffer.starts_with(":e ") => {
+        parse_main(&buffer[3..]).map(|e| writeln!(out_handle, "{}", e));
       },
       _ if buffer.starts_with(":debug ") => {
         parse_main(&buffer[7..]).map(|e| writeln!(out_handle, "{:?}", e));

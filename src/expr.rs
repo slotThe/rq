@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, fmt::{self, Display}};
 
 use ordered_float::OrderedFloat;
 
-use crate::util::{fmt_array, fmt_object};
+use crate::{eval::stdlib::Builtin, util::{fmt_array, fmt_object}};
 
 pub mod json;
 pub mod parser;
@@ -38,6 +38,7 @@ pub enum Expr {
   Arr(Vec<Expr>),
   Obj(BTreeMap<Expr, Expr>),
   IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
+  Builtin(Builtin),
 }
 
 impl Display for Expr {
@@ -51,6 +52,7 @@ impl Display for Expr {
       Expr::Arr(xs) => fmt_array(xs, f),
       Expr::Obj(hm) => fmt_object(hm, f),
       Expr::IfThenElse(i, t, e) => write!(f, "if {i} then {t} else {e}"),
+      Expr::Builtin(b) => write!(f, "{b}"),
     }
   }
 }

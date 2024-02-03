@@ -6,12 +6,12 @@ mod evaluator {
   ($left:expr, $right:expr $(,)?) => {
     assert_eq!(
       &parse($left).unwrap().check(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
-      &$right.desugar())
+      &$right)
   };
   ($left:expr, $right:expr, $($arg:tt)+) => {
     assert_eq!(
       &parse($left).unwrap().check(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
-      &$right.desugar(),
+      &$right,
       $($arg)+)
   };
 }

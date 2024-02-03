@@ -11,7 +11,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-  fn show(&self) -> &'static str {
+  pub fn show(&self) -> &'static str {
     match self {
       Builtin::Id => "id",
       Builtin::BConst => "const",
