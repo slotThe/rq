@@ -2,6 +2,8 @@
 #![feature(extend_one)]
 #![feature(iter_intersperse)]
 #![feature(box_patterns)]
+#![feature(try_blocks)]
+#![feature(assert_matches)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -57,7 +59,10 @@ fn repl() -> Result<()> {
       _ => {
         if let Some(expr) = parse_main(&buffer) {
           match expr.check(&STDLIB_TYPES) {
-            Ok(expr) => writeln!(out_handle, "{}", expr.eval(&STDLIB_CTX))?,
+            Ok(expr) => match expr.eval(&STDLIB_CTX) {
+              Ok(expr) => writeln!(out_handle, "{expr}")?,
+              Err(err) => writeln!(out_handle, "{err}")?,
+            },
             Err(err) => writeln!(out_handle, "{err}")?,
           };
         }
@@ -78,7 +83,7 @@ fn oneshot() -> Result<()> {
       "{}",
       app(expr, json_to_expr(&serde_json::from_str(&input)?))
         .check(&STDLIB_TYPES)?
-        .eval(&STDLIB_CTX)
+        .eval(&STDLIB_CTX)?
     )
   }
   Ok(())

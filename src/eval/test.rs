@@ -1,20 +1,33 @@
 #[rustfmt::skip]
 mod evaluator {
-  use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{lam, num, obj, parser::parse, var, arr, Expr}};
+  use std::assert_matches::assert_matches;
+
+  use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{arr, lam, num, obj, parser::parse, var, Expr}};
 
   macro_rules! eval_eq {
-  ($left:expr, $right:expr $(,)?) => {
-    assert_eq!(
-      &parse($left).unwrap().check(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
-      &$right)
-  };
-  ($left:expr, $right:expr, $($arg:tt)+) => {
-    assert_eq!(
-      &parse($left).unwrap().check(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
-      &$right,
-      $($arg)+)
-  };
-}
+    ($left:expr, $right:expr $(,)?) => {
+      assert_eq!(
+        &parse($left).unwrap().check(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &Ok($right)
+      )
+    };
+    ($left:expr, $right:expr, $($arg:tt)+) => {
+      assert_eq!(
+        &parse($left).unwrap().check(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &Ok($right),
+        $($arg)+
+      )
+    };
+  }
+
+  macro_rules! eval_err {
+    ($left:expr) => {
+      assert_matches!(
+        &parse($left).unwrap().check(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &Err(_)
+      )
+    };
+  }
 
   #[test]
   fn app_const_id() {
@@ -31,10 +44,18 @@ mod evaluator {
     eval_eq!(
       "(\\x -> { x.name: x.id }) { name: \"a\", id: 0 }",
       obj(&[("a", num(0.0))]),
-      "Simple get");
+      "Simple get"
+    );
     eval_eq!(
       "(map (\\x -> { if x.name then 3 else 1: x.id })) [{ name: \"3\", id: 0 }]",
       arr(&[Expr::Obj([(num(3.0), num(0.0))].into_iter().collect())]),
-      "Nested get");
+      "Nested get"
+    );
+  }
+
+  #[test]
+  fn index_errors() {
+    eval_err!("get 1 [0]");
+    eval_err!("get \"this\" (get 0 [{that:3}])");
   }
 }
