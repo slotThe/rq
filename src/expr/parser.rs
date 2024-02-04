@@ -221,13 +221,15 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
         .repeated())
       .foldl(|a, (op, b)| app(app(op, a), b));
 
-    #[rustfmt::skip]
-    p_ops.clone()
+    p_ops.clone() // An expression: \x -> x
+      // Expressions separated by pipes: get 0 | get 1
       .then(just('|').padded()
-            .ignore_then(p_ops.separated_by(just('|').padded()))
-            .or_not()
-            .flatten())
+            .ignore_then(p_ops.clone().separated_by(just('|').padded()))
+            .or_not().flatten())
       .foldl(|acc, e| lam("x", app(e, app(acc, var("x"))))) // XXX
+      // Possible applications of these operations: (get 0 | get 1) [[0]]
+      .then(p_ops.clone().padded().repeated().or_not().flatten())
+      .foldl(|f, x| app(f, x))
   })
 }
 
