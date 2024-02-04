@@ -129,6 +129,25 @@ impl Sem {
           })
           .collect(),
       )),
+      // Binary operators
+      (App(box SBuiltin(Add), box SConst(Const::Num(n))), SConst(Const::Num(m))) => {
+        Ok(SConst(Const::Num(*n + *m)))
+      },
+      (App(box SBuiltin(Sub), box SConst(Const::Num(n))), SConst(Const::Num(m))) => {
+        Ok(SConst(Const::Num(*n - *m)))
+      },
+      (App(box SBuiltin(Mul), box SConst(Const::Num(n))), SConst(Const::Num(m))) => {
+        Ok(SConst(Const::Num(*n * *m)))
+      },
+      (App(box SBuiltin(Div), box SConst(Const::Num(n))), SConst(Const::Num(m))) => {
+        Ok(SConst(Const::Num(*n / *m)))
+      },
+      (App(box SBuiltin(Eq), a), b) => Ok(SConst(Const::Bool(**a == *b))),
+      (App(box SBuiltin(Neq), a), b) => Ok(SConst(Const::Bool(**a != *b))),
+      (App(box SBuiltin(Le), a), b) => Ok(SConst(Const::Bool(**a < *b))),
+      (App(box SBuiltin(Leq), a), b) => Ok(SConst(Const::Bool(**a <= *b))),
+      (App(box SBuiltin(Ge), a), b) => Ok(SConst(Const::Bool(**a > *b))),
+      (App(box SBuiltin(Geq), a), b) => Ok(SConst(Const::Bool(**a >= *b))),
       // Otherwise
       _ => Ok(sapp(self, x)),
     }

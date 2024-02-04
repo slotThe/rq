@@ -1,6 +1,6 @@
 #[rustfmt::skip]
 mod parser {
-  use crate::expr::{app, arr, expr_str, if_then_else, lam, num, obj, parser::parse, var, Const::*, Expr::*};
+  use crate::expr::{app, arr, expr_str, if_then_else, lam, num, obj, parser::parse, var, Const::*, Expr::*, Builtin::*};
 
   macro_rules! parse_eq {
     ($left:expr, $right:expr $(,)?) => {
@@ -34,6 +34,9 @@ mod parser {
     parse_eq!("(  \\x  -> x )", lam("x", var("x")));
     parse_eq!("(|x|x)", lam("x", var("x")));
     parse_eq!("(λ x→x )", lam("x", var("x")));
+    parse_eq!("(1+2)", app(app(Builtin(Add), num(1.0)), num(2.0)));
+    parse_eq!("(  1 + 2  )", app(app(Builtin(Add), num(1.0)), num(2.0)));
+    parse_eq!("1 < ( 2*4 )", app(app(Builtin(Le), num(1.0)), app(app(Builtin(Mul), num(2.0)), num(4.0))));
   }
 
   #[test]
@@ -77,5 +80,17 @@ mod parser {
     parse_eq!("if (get \"this\" { this: 3 }) then 1 else 4", if_then_else(app(app(var("get"), expr_str("this")), obj(&[("this", num(3.0))])), num(1.0), num(4.0)));
     parse_eq!("if get \"this\" then 1 else 4", if_then_else(app(var("get"), expr_str("this")), num(1.0), num(4.0)));
     parse_eq!("if \\x -> map (\\y -> get 0 y) x then 1 else 4", if_then_else(lam("x", app(app(var("map"), lam("y", app(app(var("get"), num(0.0)), var("y")))), var("x"))), num(1.0), num(4.0)))
+  }
+
+  #[test]
+  fn bin_ops_and_precedence() {
+    // (1 + 2) + 3
+    parse_eq!("1 + 2 + 3", app(app(Builtin(Add), app(app(Builtin(Add), num(1.0)), num(2.0))), num(3.0)));
+    // 1 + (2 * 3)
+    parse_eq!("1 + 2 * 3", app(app(Builtin(Add), num(1.0)), app(app(Builtin(Mul), num(2.0)), num(3.0))));
+    // λx. (1 * get 4 x) + (5 = 5)
+    parse_eq!("\\x -> 1 * get 4 x + (  5   =  5  )", lam("x", app(app(Builtin(Add), app(app(Builtin(Mul), num(1.0)), app(app(var("get"), num(4.0)), var("x")))), app(app(Builtin(Eq), num(5.0)), num(5.0)))));
+    // (1 < (4 + 5)) = 5
+    parse_eq!("1 < 4 + 5 = 5", app(app(Builtin(Eq), app(app(Builtin(Le), num(1.0)), app(app(Builtin(Add), num(4.0)), num(5.0)))), num(5.0)))
   }
 }

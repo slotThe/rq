@@ -224,22 +224,6 @@ fn gather_constraints(
         .extend_from_slice(&[(type_t.clone(), type_e), (Type::JSON, type_i)]);
       Ok((type_t, constraints))
     },
-    // See [Note Builtin]
     Expr::Builtin(b) => gather_constraints(state, &var(b.show())),
   }
 }
-
-/* [Note Builtin]
-
-The code here is spurious, and could just be `unimplemented!()` without any
-problem.
-
-The point is that the parser does not differentiate between variables that
-have an associated builtin function, and those that do not—indeed, there is no
-reason for it to know. Since we do not have a desugaring step anymore, there
-is now a discrepancy between the AST that `Expr` represents, and what the user
-can actually input. However, overall this still seems like less complexity
-than having a separate desugared AST, as all of the syntactic sugar that we
-have currently can easily be desugared during parsng.
-
-*/

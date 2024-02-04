@@ -8,6 +8,16 @@ pub enum Builtin {
   BConst,
   Get,
   Map,
+  Add,
+  Sub,
+  Mul,
+  Div,
+  Eq,
+  Neq,
+  Le,
+  Leq,
+  Ge,
+  Geq,
 }
 
 impl Builtin {
@@ -17,6 +27,16 @@ impl Builtin {
       Builtin::BConst => "const",
       Builtin::Get => "get",
       Builtin::Map => "map",
+      Builtin::Add => "+",
+      Builtin::Sub => "-",
+      Builtin::Mul => "·",
+      Builtin::Div => "÷",
+      Builtin::Eq => "=",
+      Builtin::Neq => "≠",
+      Builtin::Le => "<",
+      Builtin::Leq => "≤",
+      Builtin::Ge => ">",
+      Builtin::Geq => "≥",
     }
   }
 }
@@ -37,7 +57,7 @@ lazy_static! {
     BTreeMap::from(STDLIB.clone().map(|f| (f.name, f.builtin)));
   pub static ref STDLIB_TYPES: BTreeMap<String, Type> =
     BTreeMap::from(STDLIB.clone().map(|f| (f.name.to_string(), f.expr_type)));
-  pub static ref STDLIB: [StdFun; 4] = [
+  pub static ref STDLIB: [StdFun; 14] = [
     StdFun {
       name:      Builtin::Id.show(),
       builtin:   Builtin::Id,
@@ -57,6 +77,56 @@ lazy_static! {
       name:      Builtin::Map.show(),
       builtin:   Builtin::Map,
       expr_type: arr(arr(Type::JSON, Type::JSON), arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Add.show(),
+      builtin:   Builtin::Add,
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Sub.show(),
+      builtin:   Builtin::Sub,
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Mul.show(),
+      builtin:   Builtin::Mul,
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Div.show(),
+      builtin:   Builtin::Div,
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Eq.show(),
+      builtin:   Builtin::Eq,
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Neq.show(),
+      builtin:   Builtin::Neq,
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Le.show(),
+      builtin:   Builtin::Le,
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Leq.show(),
+      builtin:   Builtin::Leq,
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Ge.show(),
+      builtin:   Builtin::Ge,
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Geq.show(),
+      builtin:   Builtin::Geq,
+      expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
     },
   ];
 }

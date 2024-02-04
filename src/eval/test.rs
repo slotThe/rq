@@ -58,4 +58,12 @@ mod evaluator {
     eval_err!("get 1 [0]");
     eval_err!("get \"this\" (get 0 [{that:3}])");
   }
+
+  #[test]
+  fn eval_bin_ops() {
+    eval_eq!("2 * (if 2 < 2 + 1 then 2 else 1)", num(4.0));
+    eval_eq!("2 * if 2 < 2 + 1 then 2 else 1", num(4.0));
+    eval_eq!("0 * 2 + 3", num(3.0));
+    eval_eq!("2 + ((|y| y 1) id) * ((λx → x 3) id)", num(5.0))
+  }
 }

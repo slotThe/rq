@@ -11,9 +11,9 @@ pub mod test;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Const {
-  Num(OrderedFloat<f64>),
-  Bool(bool),
   Null,
+  Bool(bool),
+  Num(OrderedFloat<f64>),
   String(String),
 }
 

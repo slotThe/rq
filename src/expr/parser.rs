@@ -4,14 +4,17 @@ use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
 use super::{app, expr_str, if_then_else, lam, num, var, Const};
-use crate::Expr;
+use crate::{eval::stdlib::Builtin, Expr};
 
 // Lots stolen from https://github.com/zesterer/chumsky/blob/0.9/examples/json.rs
+//             and  https://github.com/zesterer/chumsky/blob/0.9/examples/nano_rust.rs
 //
 // This is an absolutely unreadable mess, and the compulsively imperative
-// nature of chumsky really makes my head spin a bit. And yet, all this pain
-// seems worth it for those error messages. Still, I yearn for the days when
-// I can return to nom.
+// nature of chumsky really makes my head spin a bit. Plus, compile times went
+// up by 10x and I essentially have to comment out all of the parser when
+// working on another component so things stay responsive. Lots of fun. And
+// yet, all this pain seems worth it for those error messages. Still, I yearn
+// for the days when I can return to nom.
 fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
   recursive(|p_expr| {
     // You might think that I need a lexer; and you would be right.
@@ -186,15 +189,44 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       .or(p_if_then_else)
       .or(p_app)
       .or(p_lam)
-      .or(p_var.map(Expr::Var));
+      .or(p_var.map(Expr::Var))
+      .or(p_expr.clone().padded().delimited_by(just('('), just(')')));
 
-    (all_exprs.clone())
-      .then(
-        (just('|').padded())
-          .ignore_then(all_exprs.separated_by(just('|').padded()))
-          .or_not()
-          .flatten(),
-      )
+    // Oh how I yearn for chainl…
+    #[rustfmt::skip]
+    let p_ops_mul = (all_exprs.clone())
+      .then(just('*').or(just('·')).padded().to(Expr::Builtin(Builtin::Mul))
+        .or(just('/').or(just('÷')).padded().to(Expr::Builtin(Builtin::Div)))
+        .then(all_exprs.clone())
+        .repeated())
+      .foldl(|a, (op, b)| app(app(op, a), b));
+
+    #[rustfmt::skip]
+    let p_ops_sum = (p_ops_mul.clone())
+      .then(just('+').padded().to(Expr::Builtin(Builtin::Add))
+        .or(just('-').padded().to(Expr::Builtin(Builtin::Sub)))
+        .then(p_ops_mul.clone())
+        .repeated())
+      .foldl(|a, (op, b)| app(app(op, a), b));
+
+    #[rustfmt::skip]
+    let p_ops = (p_ops_sum.clone())
+      .then(just("==").or(just("=")).padded().to(Expr::Builtin(Builtin::Eq))
+        .or(just("!=").or(just("/=")).or(just("≠")).padded().to(Expr::Builtin(Builtin::Neq)))
+        .or(just("<=").or(just("≤")).padded().to(Expr::Builtin(Builtin::Leq)))
+        .or(just(">=").or(just("≥")).padded().to(Expr::Builtin(Builtin::Geq)))
+        .or(just('<').padded().to(Expr::Builtin(Builtin::Le)))
+        .or(just('>').padded().to(Expr::Builtin(Builtin::Ge)))
+        .then(p_ops_sum.clone())
+        .repeated())
+      .foldl(|a, (op, b)| app(app(op, a), b));
+
+    #[rustfmt::skip]
+    p_ops.clone()
+      .then(just('|').padded()
+            .ignore_then(p_ops.separated_by(just('|').padded()))
+            .or_not()
+            .flatten())
       .foldl(|acc, e| lam("x", app(e, app(acc, var("x"))))) // XXX
   })
 }

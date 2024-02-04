@@ -1,9 +1,10 @@
-#![feature(trait_alias)]
+#![feature(assert_matches)]
+#![feature(box_patterns)]
 #![feature(extend_one)]
 #![feature(iter_intersperse)]
-#![feature(box_patterns)]
+#![feature(stmt_expr_attributes)]
+#![feature(trait_alias)]
 #![feature(try_blocks)]
-#![feature(assert_matches)]
 
 #[macro_use]
 extern crate lazy_static;
