@@ -85,6 +85,7 @@ fn oneshot() -> Result<()> {
       app(expr, json_to_expr(&serde_json::from_str(&input)?))
         .check(&STDLIB_TYPES)?
         .eval(&STDLIB_CTX)?
+        .to_json()
     )
   }
   Ok(())
