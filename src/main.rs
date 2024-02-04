@@ -46,8 +46,11 @@ fn repl() -> Result<()> {
       _ if buffer.starts_with(":e ") => {
         parse_main(&buffer[3..]).map(|e| writeln!(out_handle, "{}", e));
       },
-      _ if buffer.starts_with(":debug ") => {
-        parse_main(&buffer[7..]).map(|e| writeln!(out_handle, "{:?}", e));
+      _ if buffer.starts_with(":d ") => {
+        parse_main(&buffer[3..]).map(|e| writeln!(out_handle, "{:?}", e));
+      },
+      _ if buffer.starts_with(":dp ") => {
+        parse_main(&buffer[4..]).map(|e| writeln!(out_handle, "{:#?}", e));
       },
       _ if buffer.starts_with(":t ") => {
         if let Some(expr) = parse_main(&buffer[3..]) {
