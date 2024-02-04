@@ -134,6 +134,10 @@ $ cat test.json | rq '\x -> x.0.phones.1'
   -- array (in which case value means element), or an array (in which
   -- case it really means value).
   map : (JSON → JSON) → JSON → JSON
+
+  -- Like map, `filter p xs` applies `p` to every value of `xs`.
+  -- Keep the elements for which the predicate returns truthy.
+  filter : (JSON → JSON) → JSON → JSON
   ```
 
 - Misc
@@ -213,15 +217,15 @@ Additionally, the following keywords are available:
 
     + Prettier, yet more verbose, output: `:dp`
 
-        λ> :dp \x -> x x
-        Lam(
-            "x",
-            App(
-                Var(
-                    "x",
+            λ> :dp \x -> x x
+            Lam(
+                "x",
+                App(
+                    Var(
+                        "x",
+                    ),
+                    Var(
+                        "x",
+                    ),
                 ),
-                Var(
-                    "x",
-                ),
-            ),
-        )
+            )

@@ -53,6 +53,15 @@ fn sapp(s1: &Sem, s2: &Sem) -> Sem {
   Sem::App(Box::new(s1.clone()), Box::new(s2.clone()))
 }
 
+impl Sem {
+  fn is_truthy(&self) -> bool {
+    !matches!(
+      self,
+      Sem::SConst(Const::Bool(false)) | Sem::SConst(Const::Null)
+    )
+  }
+}
+
 /// Convert an expression into a semantic version of itself.
 impl Expr {
   fn to_sem(&self, env: &Env) -> Result<Sem, EvalError> {
@@ -126,6 +135,29 @@ impl Sem {
         ob.iter()
           .flat_map(|(k, v)| -> Result<(Sem, Sem), EvalError> {
             try { (k.clone(), closure.apply(v)?) }
+          })
+          .collect(),
+      )),
+      // Filter
+      (App(box SBuiltin(Filter), closure), Arr(xs)) => Ok(Arr(
+        xs.iter()
+          .filter_map(|x| {
+            if closure.apply(x).ok()?.is_truthy() {
+              Some(x.clone())
+            } else {
+              None
+            }
+          })
+          .collect(),
+      )),
+      (App(box SBuiltin(Filter), closure), Obj(ob)) => Ok(Obj(
+        ob.iter()
+          .filter_map(|(k, v)| {
+            if closure.apply(v).ok()?.is_truthy() {
+              Some((k.clone(), v.clone()))
+            } else {
+              None
+            }
           })
           .collect(),
       )),

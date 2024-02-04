@@ -8,6 +8,7 @@ pub enum Builtin {
   BConst,
   Get,
   Map,
+  Filter,
   Add,
   Sub,
   Mul,
@@ -27,6 +28,7 @@ impl Builtin {
       Builtin::BConst => "const",
       Builtin::Get => "get",
       Builtin::Map => "map",
+      Builtin::Filter => "filter",
       Builtin::Add => "+",
       Builtin::Sub => "-",
       Builtin::Mul => "·",
@@ -57,7 +59,7 @@ lazy_static! {
     BTreeMap::from(STDLIB.clone().map(|f| (f.name, f.builtin)));
   pub static ref STDLIB_TYPES: BTreeMap<String, Type> =
     BTreeMap::from(STDLIB.clone().map(|f| (f.name.to_string(), f.expr_type)));
-  pub static ref STDLIB: [StdFun; 14] = [
+  pub static ref STDLIB: [StdFun; 15] = [
     StdFun {
       name:      Builtin::Id.show(),
       builtin:   Builtin::Id,
@@ -76,6 +78,11 @@ lazy_static! {
     StdFun {
       name:      Builtin::Map.show(),
       builtin:   Builtin::Map,
+      expr_type: arr(arr(Type::JSON, Type::JSON), arr(Type::JSON, Type::JSON)),
+    },
+    StdFun {
+      name:      Builtin::Filter.show(),
+      builtin:   Builtin::Filter,
       expr_type: arr(arr(Type::JSON, Type::JSON), arr(Type::JSON, Type::JSON)),
     },
     StdFun {
