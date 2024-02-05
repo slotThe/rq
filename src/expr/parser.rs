@@ -1,3 +1,8 @@
+//! Lots stolen from chumsky's [json] and [nano_rust] examples.
+//!
+//! [json]: https://github.com/zesterer/chumsky/blob/0.9/examples/json.rs
+//! [nano_rust]: https://github.com/zesterer/chumsky/blob/0.9/examples/nano_rust.rs
+
 use std::collections::BTreeMap;
 
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
@@ -6,15 +11,12 @@ use chumsky::prelude::*;
 use super::{app, expr_str, if_then_else, lam, num, var, Const};
 use crate::{eval::stdlib::Builtin, Expr};
 
-// Lots stolen from https://github.com/zesterer/chumsky/blob/0.9/examples/json.rs
-//             and  https://github.com/zesterer/chumsky/blob/0.9/examples/nano_rust.rs
-//
 // This is an absolutely unreadable mess, and the compulsively imperative
 // nature of chumsky really makes my head spin a bit. Plus, compile times went
-// up by 10x and I essentially have to comment out all of the parser when
-// working on another component so things stay responsive. Lots of fun. And
-// yet, all this pain seems worth it for those error messages. Still, I yearn
-// for the days when I can return to nom.
+// up by ~60× (no joke) and I essentially have to comment out all of the
+// parser when working on another component so things stay responsive. Lots of
+// fun. And yet, all this pain seems worth it for those error messages. Still,
+// I yearn for the days when I can return to nom.
 fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
   recursive(|p_expr| {
     // You might think that I need a lexer; and you would be right.
@@ -229,7 +231,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       .foldl(|acc, e| lam("x", app(e, app(acc, var("x"))))) // XXX
       // Possible applications of these operations: (get 0 | get 1) [[0]]
       .then(p_ops.clone().padded().repeated().or_not().flatten())
-      .foldl(|f, x| app(f, x))
+      .foldl(app)
   })
 }
 
@@ -239,8 +241,6 @@ pub fn parse(inp: &str) -> Result<Expr, Vec<Simple<char>>> {
 }
 
 /// Parse an expression.
-///
-/// Lots stolen from https://github.com/zesterer/chumsky/blob/0.9/examples/json.rs
 pub fn parse_main(inp: &str) -> Option<Expr> {
   let (expr, errs) = p_expr().then_ignore(end()).parse_recovery(inp.trim());
   match expr {

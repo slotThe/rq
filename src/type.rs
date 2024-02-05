@@ -8,9 +8,12 @@ pub mod test;
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Type {
-  Var(TVar),                 // A type variable.
-  JSON,                      // The JSON type: a black hole.
-  Arr(Box<Type>, Box<Type>), // A type arrow.
+  /// A type variable.
+  Var(TVar),
+  /// The JSON type: a black hole.
+  JSON,
+  /// A type arrow.
+  Arr(Box<Type>, Box<Type>),
 }
 
 /// Construct a type arrow.
@@ -50,6 +53,7 @@ impl Display for TVar {
 }
 
 impl TVar {
+  /// Does `t` occur in `self`?
   fn occurs_in(&self, t: &Type) -> bool {
     match t {
       Type::Var(tv) => tv == self,

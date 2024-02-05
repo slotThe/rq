@@ -1,3 +1,16 @@
+//! An evaluator, based on normalisation by evaluation.
+//!
+//! Thanks to the following people for providing helpful material in that
+//! direction:
+//!
+//!   - [Normalisation by Evaluation] by David Christiansen
+//!   - [Building Fast Functional Languages Fast] by Edward Kmett
+//!   - Gabriella Gonzalez's fantastic [Fall-from-Grace] project
+//!
+//! [Normalisation by Evaluation]: https://www.youtube.com/watch?v=CpADWJa-f28&pp=ygUbbm9ybWFsaXNhdGlvbiBieSBldmFsdWF0aW9u
+//! [Building Fast Functional Languages Fast]: https://www.youtube.com/watch?v=gbmURWs_SaU&pp=ygUiYnVpbGRpbmcgZnVuY3Rpb25hbCBsYW5ndWFnZXMgZmFzdA%3D%3D
+//! [Fall-From-Grace]: https://github.com/Gabriella439/grace
+
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use ordered_float::OrderedFloat;
@@ -13,10 +26,11 @@ pub mod test;
 impl TCExpr {
   /// Evaluate a type-checked expression into its normal form.
   pub fn eval(&self, env: &BTreeMap<&str, Builtin>) -> Result<Expr, EvalError> {
-    self.expr
-      // Normalisation by evaluation.
+    self
+      .expr
       .to_sem(&Rc::new(RefCell::new(
-        env.iter()
+        env
+          .iter()
           .map(|(v, e)| (v.to_string(), Sem::SBuiltin(*e)))
           .collect(),
       )))?
