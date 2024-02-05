@@ -5,7 +5,6 @@ flycheck_*.el
 /.direnv/
 /target/
 *.rs.bk
-Cargo.lock
 
 
 # Added by cargo
