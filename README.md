@@ -50,6 +50,10 @@ $ cat test.json | rq '\x -> x.0.phones.1'
 
           1 + 3 * 5 + 4 - 7    ≡    ((1 + (3 * 5)) + 4) - 7
 
+    Additionally `+` also concatenates strings.
+
+          "furble" + "wurble"    ≡    "furblewurble"
+
   - Comparison operations:
 
           1 = 3 * 5 + 4 - 7    ≡    1 = (((3 * 5) + 4) - 7)
@@ -112,13 +116,20 @@ $ cat test.json | rq '\x -> x.0.phones.1'
 
 ### Standard library
 
-- Operators:
+- Numerical operators:
 
   ``` agda
-  (+)  : JSON → JSON → JSON
+  (+)  : JSON → JSON → JSON  -- Also works for string concatenation
   (-)  : JSON → JSON → JSON
   (*)  : JSON → JSON → JSON
   (/)  : JSON → JSON → JSON
+  ```
+
+- Comparisons:
+
+  Essensially, everything that is not `false` or `null` is considered truthy.
+
+  ``` agda
   (=)  : JSON → JSON → JSON
   (!=) : JSON → JSON → JSON
   (<)  : JSON → JSON → JSON

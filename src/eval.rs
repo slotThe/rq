@@ -181,6 +181,10 @@ impl Sem {
       (App(box SBuiltin(Add), box SConst(Const::Num(n))), SConst(Const::Num(m))) => {
         Ok(SConst(Const::Num(*n + *m)))
       },
+      (
+        App(box SBuiltin(Add), box SConst(Const::String(s))),
+        SConst(Const::String(t)),
+      ) => Ok(SConst(Const::String(s.clone() + t.as_str()))),
       (App(box SBuiltin(Sub), box SConst(Const::Num(n))), SConst(Const::Num(m))) => {
         Ok(SConst(Const::Num(*n - *m)))
       },
