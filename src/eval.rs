@@ -104,11 +104,13 @@ impl Expr {
           })
           .clone(),
       ),
-      Expr::IfThenElse(i, t, e) => match i.to_sem(env)? {
-        Sem::SConst(Const::Bool(false)) | Sem::SConst(Const::Null) => e.to_sem(env),
-        Sem::SConst(_) => t.to_sem(env),
-        isem => Ok(Sem::IfThenElse(
-          Box::new(isem),
+      Expr::IfThenElse(i, t, e) => match i.to_sem(env) {
+        Err(_) | Ok(Sem::SConst(Const::Bool(false))) | Ok(Sem::SConst(Const::Null)) => {
+          e.to_sem(env)
+        },
+        Ok(Sem::SConst(_)) => t.to_sem(env),
+        Ok(isem) => Ok(Sem::IfThenElse(
+          Box::new(isem), // Evaluate further
           Box::new(t.to_sem(env)?),
           Box::new(e.to_sem(env)?),
         )),
