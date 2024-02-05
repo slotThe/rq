@@ -14,8 +14,7 @@
       let
         overlays = [ rust-overlay.overlays.default ];
         pkgs = import nixpkgs { inherit system overlays; };
-        toolchain =
-          pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default);
+        toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         platform = pkgs.makeRustPlatform {
           cargo = toolchain;
           rustc = toolchain;
