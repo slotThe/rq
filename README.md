@@ -154,6 +154,12 @@ $ cat test.json | rq '\x -> x.0.phones.1'
   -- Like map, `filter p xs` applies `p` to every value of `xs`.
   -- Keep the elements for which the predicate returns truthy.
   filter : (JSON → JSON) → JSON → JSON
+
+  -- Left-associative fold over an array or (values of an) object; e.g.,
+  --
+  --   foldl f init [x₁, x₂, …, xₙ]  ≡  f(f(…f(init, x₁), …), xₙ)
+  --
+  foldl : (JSON → JSON → JSON) → JSON → JSON → JSON
   ```
 
 - Misc
