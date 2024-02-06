@@ -66,4 +66,10 @@ mod evaluator {
     eval_eq!("0 * 2 + 3", num(3.0));
     eval_eq!("2 + ((|y| y 1) id) * ((λx → x 3) id)", num(5.0))
   }
+
+  #[test]
+  fn higher_order_functions() {
+    eval_eq!("foldl (+) 0 [1, 2, 3, 4]", num(10.0));
+    eval_eq!("map (- 1) [1, 2, 3, 4]", arr(&[num(0.0), num(1.0), num(2.0), num(3.0)]));
+  }
 }

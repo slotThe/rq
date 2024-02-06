@@ -13,87 +13,91 @@ use crate::{eval::stdlib::Builtin, Expr};
 
 // This is an absolutely unreadable mess, and the compulsively imperative
 // nature of chumsky really makes my head spin a bit. Plus, compile times went
-// up by ~60× (no joke) and I essentially have to comment out all of the
-// parser when working on another component so things stay responsive. Lots of
-// fun. And yet, all this pain seems worth it for those error messages. Still,
-// I yearn for the days when I can return to nom.
+// up by a lot, and I essentially have to comment out all of the parser when
+// working on another component so things stay responsive. Lots of fun. And
+// yet, all this pain seems worth it for those error messages. Still, I yearn
+// for the days when I can return to nom.
+#[rustfmt::skip]
 fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
-  recursive(|p_expr| {
-    // You might think that I need a lexer; and you would be right.
-    let p_var = text::ident().try_map(
-      move |s: <char as chumsky::text::Character>::Collection, span| {
-        if ["if", "then", "else"].contains(&s.as_str()) {
-          Err(Simple::expected_input_found(span, None, None))
-        } else {
-          Ok(s)
-        }
-      },
-    );
+  // You might think that I need a lexer; and you would be right.
+  let p_var = text::ident().try_map(
+    move |s: <char as chumsky::text::Character>::Collection, span| {
+      if ["if", "then", "else"].contains(&s.as_str()) {
+        Err(Simple::expected_input_found(span, None, None))
+      } else {
+        Ok(s)
+      }
+    },
+  );
 
-    let p_num = {
-      let frac = just('.').chain(text::digits(10));
-      let exp = just('e')
-        .or(just('E'))
-        .chain(just('+').or(just('-')).or_not())
-        .chain::<char, _, _>(text::digits(10));
-      just('-')
-        .or_not()
-        .chain::<char, _, _>(text::int(10))
-        .chain::<char, _, _>(frac.or_not().flatten())
-        .chain::<char, _, _>(exp.or_not().flatten())
-        .collect::<String>()
-        .from_str()
-        .unwrapped()
-        .labelled("number")
-        .map(Const::Num)
-    };
+  let p_num = {
+    let frac = just('.').chain(text::digits(10));
+    let exp = just('e')
+      .or(just('E'))
+      .chain(just('+').or(just('-')).or_not())
+      .chain::<char, _, _>(text::digits(10));
+    just('-')
+      .or_not()
+      .chain::<char, _, _>(text::int(10))
+      .chain::<char, _, _>(frac.or_not().flatten())
+      .chain::<char, _, _>(exp.or_not().flatten())
+      .collect::<String>()
+      .from_str()
+      .unwrapped()
+      .labelled("number")
+      .map(Const::Num)
+  };
 
-    let p_str = {
-      let escape = just('\\').ignore_then(
-        just('\\')
-          .or(just('/'))
-          .or(just('"'))
-          .or(just('b').to('\x08'))
-          .or(just('f').to('\x0C'))
-          .or(just('n').to('\n'))
-          .or(just('r').to('\r'))
-          .or(just('t').to('\t'))
-          .or(
-            just('u').ignore_then(
-              filter(|c: &char| c.is_ascii_hexdigit())
-                .repeated()
-                .exactly(4)
-                .collect::<String>()
-                .validate(|digits, span, emit| {
-                  char::from_u32(u32::from_str_radix(&digits, 16).unwrap())
-                    .unwrap_or_else(|| {
-                      emit(Simple::custom(span, "invalid unicode character"));
-                      '\u{FFFD}' // unicode replacement character
-                    })
-                }),
-            ),
+  let p_str = {
+    let escape = just('\\').ignore_then(
+      just('\\')
+        .or(just('/'))
+        .or(just('"'))
+        .or(just('b').to('\x08'))
+        .or(just('f').to('\x0C'))
+        .or(just('n').to('\n'))
+        .or(just('r').to('\r'))
+        .or(just('t').to('\t'))
+        .or(
+          just('u').ignore_then(
+            filter(|c: &char| c.is_ascii_hexdigit())
+              .repeated()
+              .exactly(4)
+              .collect::<String>()
+              .validate(|digits, span, emit| {
+                char::from_u32(u32::from_str_radix(&digits, 16).unwrap()).unwrap_or_else(
+                  || {
+                    emit(Simple::custom(span, "invalid unicode character"));
+                    '\u{FFFD}' // unicode replacement character
+                  },
+                )
+              }),
           ),
-      );
-      just('"')
-        .ignore_then(filter(|c| *c != '\\' && *c != '"').or(escape).repeated())
-        .then_ignore(just('"'))
-        .collect::<String>()
-        .labelled("string")
-    };
+        ),
+    );
+    just('"')
+      .ignore_then(filter(|c| *c != '\\' && *c != '"').or(escape).repeated())
+      .then_ignore(just('"'))
+      .collect::<String>()
+      .labelled("string")
+  };
 
-    let p_const = (just("true")
-      .to(Const::Bool(true))
-      .or(just("false").to(Const::Bool(false))))
-    .or(just("null").to(Const::Null))
-    .or(p_num)
-    .or(p_str.map(Const::String))
-    .map(Expr::Const);
+  let p_const = choice((
+    just("true")
+      .to(true)
+      .or(just("false").to(false))
+      .map(Const::Bool),
+    just("null").to(Const::Null),
+    p_num,
+    p_str.map(Const::String),
+  ))
+  .map(Expr::Const);
 
+  let p_expr = recursive(|p_expr| {
     let p_array = just('[')
       .padded()
       .ignore_then(
-        p_expr
-          .clone()
+        p_expr.clone()
           .padded()
           .chain(just(',').padded().ignore_then(p_expr.clone()).repeated())
           .or_not()
@@ -112,8 +116,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       just('{')
         .padded()
         .ignore_then(
-          p_kv
-            .clone()
+          p_kv.clone()
             .chain(just(',').padded().ignore_then(p_kv.clone()).repeated())
             .or_not()
             .flatten()
@@ -130,8 +133,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
         .ignore_then(p_var)
         .then_ignore(just("->").or(just("→")).padded());
       let rust_head = p_var.padded().delimited_by(just('|'), just('|'));
-      haskell_head
-        .or(rust_head)
+      haskell_head.or(rust_head)
         .padded()
         .then(p_expr.clone())
         .map(|(h, b)| lam(h.as_str(), b))
@@ -149,7 +151,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
     let p_app = recursive(|p_app| {
       let fun = {
         // The f in f x.
-        let head = (p_lam.clone().padded().delimited_by(just('('), just(')')))
+        let head = p_lam.clone().padded().delimited_by(just('('), just(')'))
           .or(p_var.map(Expr::Var))
           .or(p_app.clone().padded().delimited_by(just('('), just(')')));
         // Check for dot syntax: x.1, x.blah, …
@@ -165,73 +167,164 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
           )
           .foldl(|acc, c| app(app(var("get"), c), acc))
       };
-      let go = fun
-        // the x in f x.
+      let go = fun // the f in f x
         .then(
-          (p_var.map(Expr::Var)
-            .or(p_if_then_else.clone())
-            .or(p_const.clone())
-            .or(p_array.clone())
-            .or(p_obj.clone())
-            .or(p_lam.clone().padded().delimited_by(just('('), just(')')))
-            .or(p_app))
+          // the x in f x
+          choice((
+            p_var.map(Expr::Var),
+            p_if_then_else.clone(),
+            p_const.clone(),
+            p_array.clone(),
+            p_obj.clone(),
+            p_lam.clone().padded().delimited_by(just('('), just(')')),
+            p_app,
+            p_expr.clone().padded(),
+          ))
           .padded()
           .repeated(),
         )
         .foldl(app);
-      (go.clone())
+      go.clone()
         .or(go.clone().padded().delimited_by(just('('), just(')')))
         .padded()
         .labelled("application")
     });
 
-    let all_exprs = p_obj
-      .or(p_array)
-      .or(p_const)
-      .or(p_if_then_else)
-      .or(p_app)
-      .or(p_lam)
-      .or(p_var.map(Expr::Var))
-      .or(p_expr.clone().padded().delimited_by(just('('), just(')')));
+    // The operator-part of the parser—here be dragons. All of this code
+    // duplication probably indicates that something is seriously amiss, and I
+    // don't understand chumsky enough. An XXX for another day!
+    //
+    // NOTE: boxed() does type erasure, which is quite crucial for the
+    // operator parsers. Otherwise, chumsky compiles for… quite a while (as
+    // in, probably hours, if not days).
+    let all_exprs = choice((
+      p_obj,
+      p_array,
+      p_const,
+      p_if_then_else,
+      p_app,
+      p_lam,
+      p_var.map(Expr::Var),
+      p_expr.clone().padded().delimited_by(just('('), just(')')),
+    ))
+    .boxed();
 
-    // Oh how I yearn for chainl…
-    #[rustfmt::skip]
-    let p_ops_mul = (all_exprs.clone())
-      .then(just('*').or(just('·')).padded().to(Expr::Builtin(Builtin::Mul))
-        .or(just('/').or(just('÷')).padded().to(Expr::Builtin(Builtin::Div)))
-        .then(all_exprs.clone())
-        .repeated())
-      .foldl(|a, (op, b)| app(app(op, a), b));
+    let mul_sym = choice((
+      just('*').or(just('·')).to(Expr::Builtin(Builtin::Mul)),
+      just('/').or(just('÷')).to(Expr::Builtin(Builtin::Div)),
+    )).padded();
+    let p_ops_mul = choice((
+      // Operator sections: (= 3), (3 =)
+      mul_sym.clone()
+        .padded()
+        .then(all_exprs.clone().padded())
+        .delimited_by(just('('), just(')'))
+        .map(|(op, b)| (None, Vec::from([(op, Some(b))]))),
+      all_exprs.clone()
+        .padded()
+        .then(mul_sym.clone())
+        .delimited_by(just('('), just(')'))
+        .map(|(a, op)| (Some(a), Vec::from([(op, None)]))),
+      // A normal operator call: 3 = 4 = 5 = 7
+      all_exprs.clone().map(Some)
+        .then(mul_sym.clone().then(all_exprs.clone().map(Some)).repeated()),
+      // An operator without anything: (=)
+      mul_sym.clone()
+        .delimited_by(just('('), just(')'))
+        .map(|op| (None, Vec::from([(op, None)]))),
+    ))
+    .foldl(apply_op).map(|x| x.unwrap())
+    .boxed();
 
-    #[rustfmt::skip]
-    let p_ops_sum = (p_ops_mul.clone())
-      .then(just('+').padded().to(Expr::Builtin(Builtin::Add))
-        .or(just('-').padded().to(Expr::Builtin(Builtin::Sub)))
-        .then(p_ops_mul.clone())
-        .repeated())
-      .foldl(|a, (op, b)| app(app(op, a), b));
+    let sum_sym = choice((
+      just('+').to(Expr::Builtin(Builtin::Add)),
+      just('-').to(Expr::Builtin(Builtin::Sub)),
+    )).padded();
+    let p_ops_sum = choice((
+      // Operator sections: (= 3), (3 =)
+      sum_sym.clone()
+        .padded()
+        .then(p_ops_mul.clone().padded())
+        .delimited_by(just('('), just(')'))
+        .map(|(op, b)| (None, Vec::from([(op, Some(b))]))),
+      p_ops_mul.clone()
+        .padded()
+        .then(sum_sym.clone())
+        .delimited_by(just('('), just(')'))
+        .map(|(a, op)| (Some(a), Vec::from([(op, None)]))),
+      // A normal operator call: 3 = 4 = 5 = 7
+      p_ops_mul.clone().map(Some)
+        .then(sum_sym.clone().then(p_ops_mul.clone().map(Some)).repeated()),
+      // An operator without anything: (=)
+      sum_sym.clone()
+        .delimited_by(just('('), just(')'))
+        .map(|op| (None, Vec::from([(op, None)]))),
+    ))
+    .foldl(apply_op).map(|x| x.unwrap())
+    .boxed();
 
-    #[rustfmt::skip]
-    let p_ops = (p_ops_sum.clone())
-      .then(just("==").or(just("=")).padded().to(Expr::Builtin(Builtin::Eq))
-        .or(just("!=").or(just("/=")).or(just("≠")).padded().to(Expr::Builtin(Builtin::Neq)))
-        .or(just("<=").or(just("≤")).padded().to(Expr::Builtin(Builtin::Leq)))
-        .or(just(">=").or(just("≥")).padded().to(Expr::Builtin(Builtin::Geq)))
-        .or(just('<').padded().to(Expr::Builtin(Builtin::Le)))
-        .or(just('>').padded().to(Expr::Builtin(Builtin::Ge)))
-        .then(p_ops_sum.clone())
-        .repeated())
-      .foldl(|a, (op, b)| app(app(op, a), b));
+    let comp_sym = choice((
+      just("==").or(just("=")).to(Expr::Builtin(Builtin::Eq)),
+      just("!=")
+        .or(just("/="))
+        .or(just("≠"))
+        .to(Expr::Builtin(Builtin::Neq)),
+      just("<=").or(just("≤")).to(Expr::Builtin(Builtin::Leq)),
+      just(">=").or(just("≥")).to(Expr::Builtin(Builtin::Geq)),
+      just('<').to(Expr::Builtin(Builtin::Le)),
+      just('>').to(Expr::Builtin(Builtin::Ge)),
+    )).padded();
+    let p_ops_comp = choice((
+      // Operator sections: (= 3), (3 =)
+      comp_sym.clone()
+        .padded()
+        .then(p_ops_sum.clone().padded())
+        .delimited_by(just('('), just(')'))
+        .map(|(op, b)| (None, Vec::from([(op, Some(b))]))),
+      p_ops_sum.clone()
+        .padded()
+        .then(comp_sym.clone())
+        .delimited_by(just('('), just(')'))
+        .map(|(a, op)| (Some(a), Vec::from([(op, None)]))),
+      // A normal operator call: 3 = 4 = 5 = 7
+      p_ops_sum.clone().map(Some)
+        .then(comp_sym.clone().then(p_ops_sum.clone().map(Some)).repeated()),
+      // An operator without anything: (=)
+      comp_sym.clone()
+        .delimited_by(just('('), just(')'))
+        .map(|op| (None, Vec::from([(op, None)]))),
+    ))
+    .foldl(apply_op).map(|x| x.unwrap())
+    .boxed();
 
-    p_ops.clone() // An expression: \x -> x
-      // Expressions separated by pipes: get 0 | get 1
-      .then(just('|').padded()
-            .ignore_then(p_ops.clone().separated_by(just('|').padded()))
-            .or_not().flatten())
-      .foldl(|acc, e| lam("x", app(e, app(acc, var("x"))))) // XXX
-      // Possible applications of these operations: (get 0 | get 1) [[0]]
-      .then(p_ops.clone().padded().repeated().or_not().flatten())
-      .foldl(app)
+    let p_many = p_ops_comp.clone()
+      .then(just('|').padded().ignore_then(p_ops_comp.clone()).repeated());
+    choice((
+      // (get 0 | foldl (+) 0) [[1]]
+      just('(').padded()
+        .ignore_then(p_many.clone()
+                     .foldl(|a, b| lam("x", app(b.clone(), app(a, var("x"))))))
+        .then_ignore(just(')').padded())
+        .then(p_ops_comp.clone().padded().repeated())
+        .foldl(app),
+      // get 0 | foldl (+) 0
+      p_many.clone()
+        .foldl(|a, b| lam("x", app(b.clone(), app(a, var("x"))))),
+    ))
+  });
+
+  p_expr
+}
+
+/// Apply an operation to possibly non-existent operands. The presence or
+/// absence of operators corresponds to what kind of section (if any) is being
+/// applied: (+), (x +), (+ x), x + y.
+fn apply_op(a: Option<Expr>, (op, b): (Expr, Option<Expr>)) -> Option<Expr> {
+  Some(match (a, b) {
+    (None, None) => lam("x", lam("y", app(app(op, var("x")), var("y")))),
+    (Some(a), None) => lam("y", app(app(op, a), var("y"))),
+    (None, Some(b)) => lam("x", app(app(op, var("x")), b)),
+    (Some(a), Some(b)) => app(app(op, a), b),
   })
 }
 

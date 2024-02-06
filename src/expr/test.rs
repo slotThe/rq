@@ -37,6 +37,12 @@ mod parser {
     parse_eq!("(1+2)", app(app(Builtin(Add), num(1.0)), num(2.0)));
     parse_eq!("(  1 + 2  )", app(app(Builtin(Add), num(1.0)), num(2.0)));
     parse_eq!("1 < ( 2*4 )", app(app(Builtin(Le), num(1.0)), app(app(Builtin(Mul), num(2.0)), num(4.0))));
+    parse_eq!("(  +    )", lam("x", lam("y", app(app(Builtin(Add), var("x")), var("y")))));
+    parse_eq!("(  +  1  )", lam("x", app(app(Builtin(Add), var("x")), num(1.0))));
+    parse_eq!("(+1)", lam("x", app(app(Builtin(Add), var("x")), num(1.0))));
+    parse_eq!("(  1+   )", lam("y", app(app(Builtin(Add), num(1.0)), var("y"))));
+    parse_eq!("(1+)", lam("y", app(app(Builtin(Add), num(1.0)), var("y"))));
+
   }
 
   #[test]
@@ -73,6 +79,8 @@ mod parser {
     parse_eq!("map (\\x -> x.id) | get 0", lam("x", app(app(var("get"), num(0.0)), app(app(var("map"), lam("x", app(app(var("get"), expr_str("id")), var("x")))), var("x")))));
     parse_eq!("get 0 | \\x -> { name: x.name }", lam("x", app(lam("x", obj(&[("name", app(app(var("get"), expr_str("name")), var("x")))])), app(app(var("get"), num(0.0)), var("x")))));
     parse_eq!("(get 0 | \\x -> { name: x.name }) [{name: 0}]", app(lam("x", app(lam("x", obj(&[("name", app(app(var("get"), expr_str("name")), var("x")))])), app(app(var("get"), num(0.0)), var("x")))), arr(&[obj(&[("name", num(0.0))])])));
+    parse_eq!("get 0 | foldl (+) 0", lam("x", app(app(app(var("foldl"), lam("x", lam("y", app(app(Builtin(Add), var("x")), var("y"))))), num(0.0)), app(app(var("get"), num(0.0)), var("x")))));
+    parse_eq!("(get 0 | foldl (+) 0) [[1]]", app(lam("x", app(app(app(var("foldl"), lam("x", lam("y", app(app(Builtin(Add), var("x")), var("y"))))), num(0.0)), app(app(var("get"), num(0.0)), var("x")))), arr(&[arr(&[num(1.0)])])));
   }
 
   #[test]
@@ -93,5 +101,16 @@ mod parser {
     parse_eq!("\\x -> 1 * get 4 x + (  5   =  5  )", lam("x", app(app(Builtin(Add), app(app(Builtin(Mul), num(1.0)), app(app(var("get"), num(4.0)), var("x")))), app(app(Builtin(Eq), num(5.0)), num(5.0)))));
     // (1 < (4 + 5)) = 5
     parse_eq!("1 < 4 + 5 = 5", app(app(Builtin(Eq), app(app(Builtin(Le), num(1.0)), app(app(Builtin(Add), num(4.0)), num(5.0)))), num(5.0)))
+  }
+
+  #[test]
+  fn operator_sections() {
+    parse_eq!("(+)", lam("x", lam("y", app(app(Builtin(Add), var("x")), var("y")))));
+    parse_eq!("(=)", lam("x", lam("y", app(app(Builtin(Eq), var("x")), var("y")))));
+    parse_eq!("(*)", lam("x", lam("y", app(app(Builtin(Mul), var("x")), var("y")))));
+    parse_eq!("(+ 1)", lam("x", app(app(Builtin(Add), var("x")), num(1.0))));
+    parse_eq!("(1 +)", lam("y", app(app(Builtin(Add), num(1.0)), var("y"))));
+    parse_eq!("foldl (+) 0 [1,2,3,4]", app(app(app(var("foldl"), lam("x", lam("y", app(app(Builtin(Add), var("x")), var("y"))))), num(0.0)), arr(&[num(1.0), num(2.0), num(3.0), num(4.0)])));
+    parse_eq!("map (- 1) [1,2,3,4]", app(app(var("map"), lam("x", app(app(Builtin(Sub), var("x")), num(1.0)))), arr(&[num(1.0), num(2.0), num(3.0), num(4.0)])));
   }
 }
