@@ -34,6 +34,19 @@ $ cat test.json | rq '\x -> x.0.phones.1'
 +44 2345678
 ```
 
+Some more usage examples:
+
+``` console
+$ cat simple.json
+[{"name": "John Doe", "age": 43, "phone": +44 1234567"},{"name":"Alice"},{"name":"Bob", "age":42}]
+
+$ cat simple.json | rq 'map (\x -> x.age) | foldl (+) 0'
+85
+
+$ cat simple.json | rq 'filter (get "age" | (>= 42)) | map (\x -> { x.name: x.age })'
+[{"John Doe":43},{"Bob":42}]
+```
+
 ## The expression language
 
 - Constants: `null, false, true, 1, 2.6, "string"`.
