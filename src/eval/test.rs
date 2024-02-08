@@ -31,7 +31,7 @@ mod evaluator {
 
   #[test]
   fn app_const_id() {
-    eval_eq!("(\\x -> \\y -> x) (\\x -> x)", lam("y'", lam("x'", var("x'"))));
+    eval_eq!("(\\x -> \\y -> x) (\\x -> x)", lam("y", lam("x", var("x"))));
   }
 
   #[test]
@@ -72,4 +72,5 @@ mod evaluator {
     eval_eq!("foldl (+) 0 [1, 2, 3, 4]", num(10.0));
     eval_eq!("map (- 1) [1, 2, 3, 4]", arr(&[num(0.0), num(1.0), num(2.0), num(3.0)]));
   }
+
 }

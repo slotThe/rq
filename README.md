@@ -123,6 +123,17 @@ $ cat simple.json | rq 'filter (get "age" | (>= 42)) | map (\x -> { x.name: x.ag
         (get 0 | λx → { x.id: x.name }) [{id: 42, name: "Arthur"}, 4]
           ≡  { 42: Arthur }
 
+- Shadowed variables may be accessed using De Bruijn indices:
+
+        λ> (λx → λx → x@2) 1 2
+        variable not in scope: x@2
+        λ> (λx → λx → x@1) 1 2
+        1
+        λ> (λx → λx → x@0) 1 2
+        2
+        λ> (λx → λx → x  ) 1 2
+        2
+
 - Various binary operators can be written in pettier/alternative ways:
 
   - Multiplication: `*`, `·`

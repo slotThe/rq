@@ -1,6 +1,6 @@
 #[rustfmt::skip]
 mod parser {
-  use crate::expr::{app, arr, expr_str, if_then_else, lam, num, obj, parser::parse, var, Const::*, Expr::*, Builtin::*};
+  use crate::expr::{app, arr, expr_str, if_then_else, lam, num, obj, parser::parse, var, var_ix, Builtin::*, Const::*, Expr::*};
 
   macro_rules! parse_eq {
     ($left:expr, $right:expr $(,)?) => {
@@ -112,5 +112,12 @@ mod parser {
     parse_eq!("(1 +)", lam("y", app(app(Builtin(Add), num(1.0)), var("y"))));
     parse_eq!("foldl (+) 0 [1,2,3,4]", app(app(app(var("foldl"), lam("x", lam("y", app(app(Builtin(Add), var("x")), var("y"))))), num(0.0)), arr(&[num(1.0), num(2.0), num(3.0), num(4.0)])));
     parse_eq!("map (- 1) [1,2,3,4]", app(app(var("map"), lam("x", app(app(Builtin(Sub), var("x")), num(1.0)))), arr(&[num(1.0), num(2.0), num(3.0), num(4.0)])));
+  }
+
+  #[test]
+  fn de_bruijn_indices() {
+    parse_eq!("\\x -> \\x -> x@1", lam("x", lam("x", var_ix("x", 1))));
+    parse_eq!("\\x -> \\x -> x@0", lam("x", lam("x", var("x"))));
+    parse_eq!("\\x -> \\x -> x", lam("x", lam("x", var("x"))));
   }
 }

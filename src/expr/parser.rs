@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
-use super::{app, expr_str, if_then_else, lam, num, var, Const};
+use super::{app, de_bruijn::DBVar, expr_str, if_then_else, lam, num, var, Const};
 use crate::{eval::stdlib::Builtin, Expr};
 
 // This is an absolutely unreadable mess, and the compulsively imperative
@@ -20,7 +20,7 @@ use crate::{eval::stdlib::Builtin, Expr};
 #[rustfmt::skip]
 fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
   // You might think that I need a lexer; and you would be right.
-  let p_var = text::ident().try_map(
+  let p_varlike = text::ident().try_map(
     move |s: <char as chumsky::text::Character>::Collection, span| {
       if ["if", "then", "else"].contains(&s.as_str()) {
         Err(Simple::expected_input_found(span, None, None))
@@ -29,6 +29,10 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       }
     },
   );
+
+  let p_var = p_varlike
+    .then(just("@").ignore_then(text::int(10).from_str().unwrapped()).or_not())
+    .map(|(a, b)| Expr::Var(DBVar{ name: a.clone(), level: b.unwrap_or(0) }));
 
   let p_num = {
     let frac = just('.').chain(text::digits(10));
@@ -109,7 +113,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       .labelled("array");
 
     let p_obj = {
-      let p_kv = (p_var.or(p_str).map(|s| Expr::Const(Const::String(s))))
+      let p_kv = (p_varlike.or(p_str).map(|s| Expr::Const(Const::String(s))))
         .then_ignore(just(':').padded())
         .or(p_expr.clone().then_ignore(just(':').padded()))
         .then(p_expr.clone());
@@ -130,9 +134,9 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
 
     let p_lam = {
       let haskell_head = (just("\\").or(just("λ")).padded())
-        .ignore_then(p_var)
+        .ignore_then(p_varlike)
         .then_ignore(just("->").or(just("→")).padded());
-      let rust_head = p_var.padded().delimited_by(just('|'), just('|'));
+      let rust_head = p_varlike.padded().delimited_by(just('|'), just('|'));
       haskell_head.or(rust_head)
         .padded()
         .then(p_expr.clone())
@@ -152,7 +156,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       let fun = {
         // The f in f x.
         let head = p_lam.clone().padded().delimited_by(just('('), just(')'))
-          .or(p_var.map(Expr::Var))
+          .or(p_var)
           .or(p_app.clone().padded().delimited_by(just('('), just(')')));
         // Check for dot syntax: x.1, x.blah, …
         head
@@ -161,7 +165,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
               .ignore_then(
                 text::int(10)
                   .map(|i: String| num(i.parse::<f64>().unwrap()))
-                  .or(p_var.or(p_str).map(expr_str)),
+                  .or(p_varlike.or(p_str).map(expr_str)),
               )
               .repeated(),
           )
@@ -171,7 +175,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
         .then(
           // the x in f x
           choice((
-            p_var.map(Expr::Var),
+            p_var,
             p_if_then_else.clone(),
             p_const.clone(),
             p_array.clone(),
@@ -204,7 +208,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       p_if_then_else,
       p_app,
       p_lam,
-      p_var.map(Expr::Var),
+      p_var,
       p_expr.clone().padded().delimited_by(just('('), just(')')),
     ))
     .boxed();

@@ -2,8 +2,10 @@ use std::{collections::BTreeMap, fmt::{self, Display}};
 
 use ordered_float::OrderedFloat;
 
+use self::de_bruijn::DBVar;
 use crate::{eval::stdlib::Builtin, util::{fmt_array, fmt_object}};
 
+pub mod de_bruijn;
 pub mod json;
 pub mod parser;
 #[cfg(test)]
@@ -32,7 +34,8 @@ impl Display for Const {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Expr {
   Const(Const),
-  Var(String),
+  /// A variable with its associated De Bruijn level.
+  Var(DBVar),
   Lam(String, Box<Expr>),
   App(Box<Expr>, Box<Expr>),
   Arr(Vec<Expr>),
@@ -59,7 +62,7 @@ impl Display for Expr {
 
 // Constructing expressions.
 pub fn app(e1: Expr, e2: Expr) -> Expr { Expr::App(Box::new(e1), Box::new(e2)) }
-pub fn var(v: &str) -> Expr { Expr::Var(v.to_string()) }
+pub fn var(v: &str) -> Expr { Expr::Var(DBVar::from_pair(v, 0)) }
 pub fn lam(h: &str, b: Expr) -> Expr { Expr::Lam(h.to_string(), Box::new(b)) }
 pub fn if_then_else(i: Expr, t: Expr, e: Expr) -> Expr {
   Expr::IfThenElse(Box::new(i), Box::new(t), Box::new(e))
@@ -72,3 +75,5 @@ pub fn arr(xs: &[Expr]) -> Expr { Expr::Arr(xs.to_vec()) }
 pub fn obj(xs: &[(&str, Expr)]) -> Expr {
   Expr::Obj(xs.iter().map(|(k, v)| (expr_str(k), v.clone())).collect())
 }
+#[cfg(test)]
+pub fn var_ix(v: &str, ix: isize) -> Expr { Expr::Var(DBVar::from_pair(v, ix)) }

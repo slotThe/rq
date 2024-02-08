@@ -1,9 +1,9 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity};
 
 use thiserror::Error;
 
 use super::{arr, TVar, Type};
-use crate::expr::{var, Expr};
+use crate::expr::{de_bruijn::{DBEnv, DBVar}, var, Expr};
 
 /// A type-checked expression.
 #[derive(Debug)]
@@ -22,7 +22,7 @@ impl Expr {
   /// its associated type.
   pub fn infer(&self, ctx: &BTreeMap<String, Type>) -> Result<Type, TypeCheckError> {
     let mut state = State {
-      ctx:  ctx.clone(),
+      ctx:  DBEnv::from_iter_with(ctx.clone(), identity),
       tvar: TVar(0),
     };
     let (raw_type, mut constrs) = gather_constraints(&mut state, self)?;
@@ -68,7 +68,7 @@ impl Type {
 #[derive(Debug, Clone, Error, PartialEq)]
 pub enum TypeCheckError {
   #[error("variable not in scope: {0}")]
-  VariableNotInScope(String),
+  VariableNotInScope(DBVar),
   #[error("can't unify {0} with {1}")]
   UnificationError(Type, Type),
   #[error("Occurs check: can't construct infinite type: {0} ≡ {1}")]
@@ -156,7 +156,7 @@ impl Constraints {
 struct State {
   /// Typing context containing resolved constraints of the form
   /// variable → its type.
-  ctx:  BTreeMap<String, Type>,
+  ctx:  DBEnv<Type>,
   /// Number of type variables in use.
   tvar: TVar,
 }
@@ -177,9 +177,9 @@ fn gather_constraints(
 ) -> Result<(Type, Constraints), TypeCheckError> {
   match expr {
     Expr::Const(_) => Ok((Type::JSON, Constraints::new())),
-    Expr::Var(v) => match state.ctx.get(v) {
+    Expr::Var(v) => match state.ctx.lookup_var(v) {
       None => Err(TypeCheckError::VariableNotInScope(v.clone())),
-      Some(v) => Ok((v.clone(), Constraints::new())),
+      Some(t) => Ok((t.clone(), Constraints::new())),
     },
     Expr::Arr(exprs) => Ok((
       Type::JSON,
@@ -202,7 +202,7 @@ fn gather_constraints(
     },
     Expr::Lam(var, body) => {
       let tv = Type::Var(state.fresh_mut());
-      state.ctx.insert(var.clone(), tv.clone());
+      state.ctx.add_mut(var, &tv);
       let (ret_type, constrs) = gather_constraints(state, body)?;
       Ok((arr(tv, ret_type), constrs))
     },

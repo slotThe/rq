@@ -11,13 +11,13 @@
 //! [Building Fast Functional Languages Fast]: https://www.youtube.com/watch?v=gbmURWs_SaU&pp=ygUiYnVpbGRpbmcgZnVuY3Rpb25hbCBsYW5ndWFnZXMgZmFzdA%3D%3D
 //! [Fall-From-Grace]: https://github.com/Gabriella439/grace
 
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::collections::BTreeMap;
 
 use ordered_float::OrderedFloat;
 use thiserror::Error;
 
 use self::stdlib::Builtin;
-use crate::{expr::{app, if_then_else, lam, Const, Expr}, r#type::checker::TCExpr};
+use crate::{expr::{app, de_bruijn::{num_vars, DBEnv, DBVar}, if_then_else, lam, Const, Expr}, r#type::checker::TCExpr};
 
 pub mod stdlib;
 #[cfg(test)]
@@ -28,12 +28,7 @@ impl TCExpr {
   pub fn eval(&self, env: &BTreeMap<&str, Builtin>) -> Result<Expr, EvalError> {
     self
       .expr
-      .to_sem(&Rc::new(RefCell::new(
-        env
-          .iter()
-          .map(|(v, e)| (v.to_string(), Sem::SBuiltin(*e)))
-          .collect(),
-      )))?
+      .to_sem(&DBEnv::from_iter_with(env.clone(), Sem::SBuiltin))?
       .reify()
   }
 }
@@ -44,18 +39,17 @@ pub enum EvalError {
   WrongIndex(String, Expr),
 }
 
-// XXX: This might be better as a Vec<String, Sem>, because values with the
-// same name might occur deeper inside of expressions. However, I've
-// completely ignored DeBruijn indices for now, so that would need to be
-// addressed first.
-type Env = Rc<RefCell<BTreeMap<String, Sem>>>;
+/// Summon a new variable from the void.
+fn fresh(var: &str, names: &[String]) -> Sem {
+  Sem::Var(DBVar::from_pair(var, num_vars(names, var)))
+}
 
 /// A semantic representation of a term.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Sem {
-  Var(String),
+  Var(DBVar),
   SConst(Const),
-  Closure(Env, String, Box<Expr>),
+  Closure(DBEnv<Sem>, String, Box<Expr>),
   App(Box<Sem>, Box<Sem>),
   Arr(Vec<Sem>),
   Obj(BTreeMap<Sem, Sem>),
@@ -78,7 +72,7 @@ impl Sem {
 
 /// Convert an expression into a semantic version of itself.
 impl Expr {
-  fn to_sem(&self, env: &Env) -> Result<Sem, EvalError> {
+  fn to_sem(&self, env: &DBEnv<Sem>) -> Result<Sem, EvalError> {
     match self {
       Expr::Const(c) => Ok(Sem::SConst(c.clone())),
       Expr::Lam(h, b) => Ok(Sem::Closure(env.clone(), h.to_string(), b.clone())),
@@ -92,18 +86,10 @@ impl Expr {
           .collect(),
       )),
       Expr::Builtin(f) => Ok(Sem::SBuiltin(*f)),
-      Expr::Var(v) => Ok(
-        env
-          .borrow()
-          .get(v)
-          .unwrap_or_else(|| {
-            panic!(
-              "Variable {v} not in scope—you've hit a bug in the type checker! Please \
-               report this to the appropriate places."
-            )
-          })
-          .clone(),
-      ),
+      Expr::Var(v) => Ok(env.lookup_var(v).expect(
+        "Variable {v} not in scope—you've hit a bug in the type checker! Please report \
+         this to the appropriate places.",
+      )),
       Expr::IfThenElse(i, t, e) => match i.to_sem(env) {
         Err(_) | Ok(Sem::SConst(Const::Bool(false))) | Ok(Sem::SConst(Const::Null)) => {
           e.to_sem(env)
@@ -120,14 +106,15 @@ impl Expr {
 }
 
 impl Sem {
-  /// Apply self to x.
+  /// Apply self to x. This includes evaluating closures, as well as builtin
+  /// functions.
   fn apply(&self, x: &Sem) -> Result<Sem, EvalError> {
     use Builtin::*;
     use Sem::*;
     match (self, x) {
       // Closure
       (Closure(env, v, b), _) => {
-        env.borrow_mut().insert(v.clone(), x.clone()); // Associate the bound variable to x
+        env.add_mut(v, x); // Associate bound variable v to x.
         b.to_sem(env)
       },
       // Small builtin
@@ -216,15 +203,16 @@ impl Sem {
   fn reify(&self) -> Result<Expr, EvalError> {
     fn go(names: &mut Vec<String>, sem: &Sem) -> Result<Expr, EvalError> {
       match sem {
-        Sem::Var(v) => Ok(Expr::Var(v.clone())),
+        Sem::Var(DBVar { name, level }) => Ok(Expr::Var(
+          // Since we are type-checked, this is never smaller than 0.
+          // Also see [Note closure var counts]
+          DBVar::from_pair(name.as_str(), num_vars(names, name) as isize - level),
+        )),
         Sem::SConst(c) => Ok(Expr::Const(c.clone())),
         Sem::Closure(env, v, b) => {
-          let fresh_v = v.clone() + "'"; // TODO: find something better.
-          names.push(fresh_v.clone());
-          env
-            .borrow_mut()
-            .insert(v.clone(), Sem::Var(fresh_v.clone()));
-          Ok(lam(&fresh_v, go(names, &b.to_sem(env)?)?))
+          names.push(v.clone());
+          env.add_mut(v, &fresh(v, names)); // See [Note closure var counts]
+          Ok(lam(v, go(names, &b.to_sem(env)?)?))
         },
         Sem::App(f, x) => Ok(app(go(names, f)?, go(names, x)?)),
         Sem::Arr(xs) => Ok(Expr::Arr(xs.iter().flat_map(|x| go(names, x)).collect())),
@@ -244,3 +232,31 @@ impl Sem {
     go(&mut Vec::new(), self)
   }
 }
+
+/* [Note closure var counts]
+
+Given the expression
+
+    names.push(v.clone());
+    env.add_mut(v, &fresh(v, names));
+
+in a closure semantic expression, we already count the name of the inner
+bound variable towards its index in the environment. This means that the
+accompanying retransformation for the variable looks like
+
+    num_vars(names, name) - level
+
+If we instead turned this around and had
+
+    let freshv = fresh(v, names);
+    names.push(v.clone());
+    env.add_mut(v, &freshv);
+
+then we do *not* do that and would need a different retransformation:
+
+    num_vars(names, name) - level - 1
+
+Note: I hope I never run into the kinds of troubles where this information
+is necessary.
+
+*/
