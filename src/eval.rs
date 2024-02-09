@@ -1,4 +1,4 @@
-//! An evaluator, based on normalisation by evaluation.
+//! The evaluator, based on normalisation by evaluation.
 //!
 //! Thanks to the following people for providing helpful material in that
 //! direction:
@@ -17,7 +17,7 @@ use ordered_float::OrderedFloat;
 use thiserror::Error;
 
 use self::stdlib::Builtin;
-use crate::{expr::{app, de_bruijn::{num_vars, DBEnv, DBVar}, if_then_else, lam, Const, Expr}, r#type::checker::TCExpr};
+use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, if_then_else, lam, Const, Expr}, r#type::checker::TCExpr};
 
 pub mod stdlib;
 #[cfg(test)]
@@ -39,6 +39,10 @@ pub enum EvalError {
   WrongIndex(String, Expr),
 }
 
+fn num_vars(names: &[String], var: &str) -> isize {
+  names.iter().filter(|&v| v == var).count() as isize
+}
+
 /// Summon a new variable from the void.
 fn fresh(var: &str, names: &[String]) -> Sem {
   Sem::Var(DBVar::from_pair(var, num_vars(names, var)))
@@ -57,11 +61,11 @@ enum Sem {
   SBuiltin(Builtin),
 }
 
-fn sapp(s1: &Sem, s2: &Sem) -> Sem {
-  Sem::App(Box::new(s1.clone()), Box::new(s2.clone()))
-}
-
 impl Sem {
+  fn app(&self, s2: &Sem) -> Sem {
+    Sem::App(Box::new(self.clone()), Box::new(s2.clone()))
+  }
+
   fn is_truthy(&self) -> bool {
     !matches!(
       self,
@@ -70,8 +74,9 @@ impl Sem {
   }
 }
 
-/// Convert an expression into a semantic version of itself.
 impl Expr {
+  /// Convert an expression into a semantic version of itself; i.e., evaluate
+  /// the expression, but leave it in the semantic representation.
   fn to_sem(&self, env: &DBEnv<Sem>) -> Result<Sem, EvalError> {
     match self {
       Expr::Const(c) => Ok(Sem::SConst(c.clone())),
@@ -119,7 +124,7 @@ impl Sem {
       },
       // Small builtin
       (SBuiltin(Id), _) => Ok(x.clone()),
-      (SBuiltin(_), _) => Ok(sapp(self, x)),
+      (SBuiltin(_), _) => Ok(self.app(x)),
       (App(box SBuiltin(BConst), this), _) => Ok(*this.clone()),
       // Get
       (App(box SBuiltin(Get), box SConst(Const::Num(OrderedFloat(i)))), Arr(xs)) => xs
@@ -195,7 +200,7 @@ impl Sem {
       (App(box SBuiltin(Ge), a), b) => Ok(SConst(Const::Bool(**a > *b))),
       (App(box SBuiltin(Geq), a), b) => Ok(SConst(Const::Bool(**a >= *b))),
       // Otherwise
-      _ => Ok(sapp(self, x)),
+      _ => Ok(self.app(x)),
     }
   }
 
@@ -206,7 +211,7 @@ impl Sem {
         Sem::Var(DBVar { name, level }) => Ok(Expr::Var(
           // Since we are type-checked, this is never smaller than 0.
           // Also see [Note closure var counts]
-          DBVar::from_pair(name.as_str(), num_vars(names, name) as isize - level),
+          DBVar::from_pair(name.as_str(), num_vars(names, name) - level),
         )),
         Sem::SConst(c) => Ok(Expr::Const(c.clone())),
         Sem::Closure(env, v, b) => {

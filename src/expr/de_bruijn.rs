@@ -39,10 +39,6 @@ impl<'a> DBVar {
   }
 }
 
-pub fn num_vars(names: &[String], var: &str) -> usize {
-  names.iter().filter(|&v| v == var).count()
-}
-
 /// The evaluation environment: A map from a variable name to its different
 /// expressions, each element corresponding to one De Bruijn level. I.e.,
 /// given an environment like ["x", [sem₀, sem₁]], xᵢ would correspond to

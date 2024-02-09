@@ -12,7 +12,7 @@ pub struct TCExpr {
 }
 
 impl Expr {
-  // Verify that the given expression has a valid type.
+  /// Verify that the given expression has a valid type.
   pub fn check(&self, ctx: &BTreeMap<String, Type>) -> Result<TCExpr, TypeCheckError> {
     self.infer(ctx)?;
     Ok(TCExpr { expr: self.clone() })
