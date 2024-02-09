@@ -46,12 +46,29 @@ pub enum Expr {
 
 impl Display for Expr {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn try_parens(expr: &Expr) -> String {
+      match expr {
+        Expr::Lam(_, _) | Expr::App(_, _) | Expr::IfThenElse(_, _, _) => {
+          format!("({expr})")
+        },
+        _ => format!("{expr}"),
+      }
+    }
     match self {
       Expr::Const(c) => write!(f, "{c}"),
       Expr::Var(v) => write!(f, "{v}"),
       Expr::Lam(v, b) => write!(f, "λ{v}. {b}"),
-      Expr::App(box Expr::App(g, x), y) => write!(f, "({g} {x} {y})"),
-      Expr::App(g, x) => write!(f, "({g} {x})"),
+      Expr::App(box Expr::App(box Expr::App(g, w), x), y) => write!(
+        f,
+        "{g} {} {} {}",
+        try_parens(w),
+        try_parens(x),
+        try_parens(y)
+      ),
+      Expr::App(box Expr::App(g, x), y) => {
+        write!(f, "{g} {} {}", try_parens(x), try_parens(y))
+      },
+      Expr::App(g, x) => write!(f, "{} {}", try_parens(g), try_parens(x)),
       Expr::Arr(xs) => fmt_array(xs, f),
       Expr::Obj(hm) => fmt_object(hm, f),
       Expr::IfThenElse(i, t, e) => write!(f, "if {i} then {t} else {e}"),
