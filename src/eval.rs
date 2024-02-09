@@ -17,7 +17,7 @@ use ordered_float::OrderedFloat;
 use thiserror::Error;
 
 use self::stdlib::Builtin;
-use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, if_then_else, lam, Const, Expr}, r#type::checker::TCExpr};
+use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, if_then_else, λ, Const, Expr}, r#type::checker::TCExpr};
 
 pub mod stdlib;
 #[cfg(test)]
@@ -217,7 +217,7 @@ impl Sem {
         Sem::Closure(env, v, b) => {
           names.push(v.clone());
           env.add_mut(v, &fresh(v, names)); // See [Note closure var counts]
-          Ok(lam(v, go(names, &b.to_sem(env)?)?))
+          Ok(λ(v, go(names, &b.to_sem(env)?)?))
         },
         Sem::App(f, x) => Ok(app(go(names, f)?, go(names, x)?)),
         Sem::Arr(xs) => Ok(Expr::Arr(xs.iter().flat_map(|x| go(names, x)).collect())),

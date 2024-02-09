@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
-use super::{app, de_bruijn::DBVar, expr_str, if_then_else, lam, num, var, Const};
+use super::{app, de_bruijn::DBVar, expr_str, if_then_else, num, var, λ, Const};
 use crate::{eval::stdlib::Builtin, Expr};
 
 // This is an absolutely unreadable mess, and the compulsively imperative
@@ -140,7 +140,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       haskell_head.or(rust_head)
         .padded()
         .then(p_expr.clone())
-        .map(|(h, b)| lam(h.as_str(), b))
+        .map(|(h, b)| λ(h.as_str(), b))
         .labelled("lambda")
     };
 
@@ -307,13 +307,13 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       // (get 0 | foldl (+) 0) [[1]]
       just('(').padded()
         .ignore_then(p_many.clone()
-                     .foldl(|a, b| lam("x", app(b.clone(), app(a, var("x"))))))
+                     .foldl(|a, b| λ("x", app(b.clone(), app(a, var("x"))))))
         .then_ignore(just(')').padded())
         .then(p_ops_comp.clone().padded().repeated())
         .foldl(app),
       // get 0 | foldl (+) 0
       p_many.clone()
-        .foldl(|a, b| lam("x", app(b.clone(), app(a, var("x"))))),
+        .foldl(|a, b| λ("x", app(b.clone(), app(a, var("x"))))),
     ))
   });
 
@@ -325,9 +325,9 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
 /// applied: (+), (x +), (+ x), x + y.
 fn apply_op(a: Option<Expr>, (op, b): (Expr, Option<Expr>)) -> Option<Expr> {
   Some(match (a, b) {
-    (None, None) => lam("x", lam("y", app(app(op, var("x")), var("y")))),
-    (Some(a), None) => lam("y", app(app(op, a), var("y"))),
-    (None, Some(b)) => lam("x", app(app(op, var("x")), b)),
+    (None, None) => λ("x", λ("y", app(app(op, var("x")), var("y")))),
+    (Some(a), None) => λ("y", app(app(op, a), var("y"))),
+    (None, Some(b)) => λ("x", app(app(op, var("x")), b)),
     (Some(a), Some(b)) => app(app(op, a), b),
   })
 }

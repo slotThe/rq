@@ -80,11 +80,11 @@ impl Display for Expr {
 // Constructing expressions.
 pub fn app(e1: Expr, e2: Expr) -> Expr { Expr::App(Box::new(e1), Box::new(e2)) }
 pub fn var(v: &str) -> Expr { Expr::Var(DBVar::from_pair(v, 0)) }
-pub fn lam(h: &str, b: Expr) -> Expr { Expr::Lam(h.to_string(), Box::new(b)) }
+pub fn λ(h: &str, b: Expr) -> Expr { Expr::Lam(h.to_string(), Box::new(b)) }
 pub fn if_then_else(i: Expr, t: Expr, e: Expr) -> Expr {
   Expr::IfThenElse(Box::new(i), Box::new(t), Box::new(e))
 }
-pub fn num(n: f64) -> Expr { Expr::Const(Const::Num(OrderedFloat(n))) }
+pub fn num(n: impl Into<f64>) -> Expr { Expr::Const(Const::Num(OrderedFloat(n.into()))) }
 pub fn expr_str<S: ToString>(s: S) -> Expr { Expr::Const(Const::String(s.to_string())) }
 #[cfg(test)]
 pub fn arr(xs: &[Expr]) -> Expr { Expr::Arr(xs.to_vec()) }
