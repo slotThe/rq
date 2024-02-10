@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, fmt::{self, Display}};
 
+/// Pretty print an object of pretty-printable things.
 pub fn fmt_object<T: Display>(
   hm: &BTreeMap<T, T>,
   f: &mut fmt::Formatter,
@@ -14,6 +15,7 @@ pub fn fmt_object<T: Display>(
   )
 }
 
+/// Pretty print an array of pretty-printable things.
 pub fn fmt_array<T: Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
   write!(
     f,
@@ -24,3 +26,6 @@ pub fn fmt_array<T: Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
       .collect::<String>()
   )
 }
+
+/// Style the given item with an off-gold like colour.
+pub fn style(t: impl Display) -> String { format!("\x1b[33m{t}\x1b[0m") }

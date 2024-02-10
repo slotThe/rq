@@ -3,7 +3,7 @@ use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity};
 use thiserror::Error;
 
 use super::{arr, TVar, Type};
-use crate::expr::{de_bruijn::{DBEnv, DBVar}, var, Expr};
+use crate::{expr::{de_bruijn::{DBEnv, DBVar}, var, Expr}, util::style};
 
 /// A type-checked expression.
 #[derive(Debug)]
@@ -69,24 +69,27 @@ impl Type {
 pub enum TypeCheckError {
   #[error("Variable not in scope: {0}")]
   VariableNotInScope(DBVar),
-  #[error("Can't unify {0} with {1}")]
-  UnificationError(Type, Type),
-  #[error("Occurs check: can't construct infinite type: {0} ≡ {1}")]
-  OccursCheck(Type, Type),
+  #[error("Can't unify {} with {} in expression {}", style(.0), style(.1), style(.2))]
+  UnificationError(Type, Type, Expr),
+  #[error(
+    "Occurs check: can't construct infinite type {} ≡ {} in expression {}",
+    style(.0), style(.1), style(.2)
+  )]
+  OccursCheck(Type, Type, Expr),
 }
 
 /// Normalise a type checking error and emit it.
 /// type_error: TCE::Ident → Type → Type → Result<Type, TCE>
 macro_rules! type_error {
-  (VariableNotInScope, $v:expr) => {
+  (VariableNotInScope, $v:expr $(,)?) => {
     Err(TypeCheckError::VariableNotInScope($v.clone()))
   };
-  ($error_typ:ident, $t1:expr, $t2:expr $(,)?) => {{
+  ($error_typ:ident, $t1:expr, $t2:expr, $e:expr $(,)?) => {{
     let mut t1n = $t1.clone();
     t1n.normalise_mut();
     let mut t2n = $t2.clone();
     t2n.normalise_mut();
-    Err(TypeCheckError::$error_typ(t1n, t2n))
+    Err(TypeCheckError::$error_typ(t1n, t2n, $e))
   }};
 }
 
