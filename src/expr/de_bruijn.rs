@@ -1,9 +1,10 @@
 //! "Namespace" De Bruijn indices, as well as an environment that can hold them.
-//! See [1] and [this] blog post for more information.
 //!
-//! [1]: Mark-Oliver Stehr, CINNI – A Generic Calculus of Explicit
-//!      Substitutions and its Application to λ- ς- and π-Calculi, Electronic
-//!      Notes in Theoretical Computer Science, Volume 36, 2000, Pages 70-92.
+//! See \[1\] and [this] blog post for more information.
+//!
+//! \[1\]: Mark-Oliver Stehr, CINNI – A Generic Calculus of Explicit
+//!        Substitutions and its Application to λ- ς- and π-Calculi, Electronic
+//!        Notes in Theoretical Computer Science, Volume 36, 2000, Pages 70–92.
 //!
 //! [this]: https://www.haskellforall.com/2021/08/namespaced-de-bruijn-indices.html
 
@@ -41,8 +42,8 @@ impl<'a> DBVar {
 
 /// The evaluation environment: A map from a variable name to its different
 /// expressions, each element corresponding to one De Bruijn level. I.e.,
-/// given an environment like ["x", [sem₀, sem₁]], xᵢ would correspond to
-/// semᵢ, for i ∈ {0, 1}.
+/// given an environment like [ "x", [ sem₀, sem₁ ] ], then xᵢ would correspond
+/// to semᵢ, for i ∈ { 0, 1 }.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DBEnv<T>(pub Rc<RefCell<BTreeMap<String, Vec<T>>>>);
 
