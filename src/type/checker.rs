@@ -67,12 +67,27 @@ impl Type {
 
 #[derive(Debug, Clone, Error, PartialEq)]
 pub enum TypeCheckError {
-  #[error("variable not in scope: {0}")]
+  #[error("Variable not in scope: {0}")]
   VariableNotInScope(DBVar),
-  #[error("can't unify {0} with {1}")]
+  #[error("Can't unify {0} with {1}")]
   UnificationError(Type, Type),
   #[error("Occurs check: can't construct infinite type: {0} ≡ {1}")]
   OccursCheck(Type, Type),
+}
+
+/// Normalise a type checking error and emit it.
+/// type_error: TCE::Ident → Type → Type → Result<Type, TCE>
+macro_rules! type_error {
+  (VariableNotInScope, $v:expr) => {
+    Err(TypeCheckError::VariableNotInScope($v.clone()))
+  };
+  ($error_typ:ident, $t1:expr, $t2:expr $(,)?) => {{
+    let mut t1n = $t1.clone();
+    t1n.normalise_mut();
+    let mut t2n = $t2.clone();
+    t2n.normalise_mut();
+    Err(TypeCheckError::$error_typ(t1n, t2n))
+  }};
 }
 
 /// A single substitution comprises a type variable and its refined type.
@@ -115,7 +130,6 @@ impl Constraints {
         if t1 == t2 {
           self.unify()
         } else {
-          let unify_error = Err(TypeCheckError::UnificationError(t1.clone(), t2.clone()));
           match (t1.clone(), t2.clone()) {
             (Type::Var(v), _) => self.substitute(v, &t2), // refine
             (_, Type::Var(v)) => self.substitute(v, &t1), // refine
@@ -123,7 +137,7 @@ impl Constraints {
               self.0.extend_from_slice(&[(*t1, *t3), (*t2, *t4)]); // add new constraints
               self.unify()
             },
-            _ => unify_error,
+            _ => type_error!(UnificationError, t1, t2),
           }
         }
       },
@@ -137,7 +151,7 @@ impl Constraints {
     typ: &Type, // Its refined type
   ) -> Result<Substitutions, TypeCheckError> {
     if var.occurs_in(typ) {
-      Err(TypeCheckError::OccursCheck(Type::Var(var), typ.clone()))
+      type_error!(OccursCheck, &Type::Var(var), typ)
     } else {
       let refinement: &Substitutions = &HashMap::from([(var, typ.clone())]);
       let mut unified: Substitutions = self
@@ -178,7 +192,7 @@ fn gather_constraints(
   match expr {
     Expr::Const(_) => Ok((Type::JSON, Constraints::new())),
     Expr::Var(v) => match state.ctx.lookup_var(v) {
-      None => Err(TypeCheckError::VariableNotInScope(v.clone())),
+      None => type_error!(VariableNotInScope, v),
       Some(t) => Ok((t.clone(), Constraints::new())),
     },
     Expr::Arr(exprs) => Ok((
