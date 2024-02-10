@@ -107,13 +107,15 @@ impl Type {
   }
 }
 
-/// An association list of type constraints. An element (x, y) represents
-/// a constraint of the form x ≡ y.
+/// An association list of type constraints. An element (x, y, e) represents a
+/// constraint of the form x ≡ y in the expression e. The expression is merely
+/// used to improve error messages, and does not weigh on the constraints in
+/// any way.
 #[derive(Debug, Clone)]
-struct Constraints(Vec<(Type, Type)>);
+struct Constraints(Vec<(Type, Type, Expr)>);
 
-impl FromIterator<(Type, Type)> for Constraints {
-  fn from_iter<T: IntoIterator<Item = (Type, Type)>>(iter: T) -> Self {
+impl FromIterator<(Type, Type, Expr)> for Constraints {
+  fn from_iter<T: IntoIterator<Item = (Type, Type, Expr)>>(iter: T) -> Self {
     Constraints(iter.into_iter().collect::<Vec<_>>())
   }
 }
@@ -126,18 +128,20 @@ impl Constraints {
   fn unify(&mut self) -> Result<Substitutions, TypeCheckError> {
     match self.0.pop() {
       None => Ok(HashMap::new()),
-      Some((t1, t2)) => {
+      Some((t1, t2, e)) => {
         if t1 == t2 {
           self.unify()
         } else {
           match (t1.clone(), t2.clone()) {
-            (Type::Var(v), _) => self.substitute(v, &t2), // refine
-            (_, Type::Var(v)) => self.substitute(v, &t1), // refine
+            (Type::Var(v), _) => self.substitute(v, &t2, e), // refine
+            (_, Type::Var(v)) => self.substitute(v, &t1, e), // refine
             (Type::Arr(t1, t2), Type::Arr(t3, t4)) => {
-              self.0.extend_from_slice(&[(*t1, *t3), (*t2, *t4)]); // add new constraints
+              self
+                .0
+                .extend_from_slice(&[(*t1, *t3, e.clone()), (*t2, *t4, e.clone())]); // add new constraints
               self.unify()
             },
-            _ => type_error!(UnificationError, t1, t2),
+            _ => type_error!(UnificationError, t1, t2, e),
           }
         }
       },
@@ -149,15 +153,16 @@ impl Constraints {
     &mut self,  // Constraints possibly containing the type variable
     var: TVar,  // The type variable to refine
     typ: &Type, // Its refined type
+    expr: Expr, // The expression in which the substitution takes place—for context.
   ) -> Result<Substitutions, TypeCheckError> {
     if var.occurs_in(typ) {
-      type_error!(OccursCheck, &Type::Var(var), typ)
+      type_error!(OccursCheck, &Type::Var(var), typ, expr)
     } else {
       let refinement: &Substitutions = &HashMap::from([(var, typ.clone())]);
       let mut unified: Substitutions = self
         .0
         .iter()
-        .map(|(ty1, ty2)| (ty1.refine(refinement), ty2.refine(refinement)))
+        .map(|(ty1, ty2, e)| (ty1.refine(refinement), ty2.refine(refinement), e.clone()))
         .collect::<Constraints>()
         .unify()?;
       unified.entry(var).or_insert_with(|| typ.clone());
@@ -200,7 +205,7 @@ fn gather_constraints(
       Constraints(exprs.iter().try_fold(Vec::new(), |mut acc, e| {
         let (t_e, mut con_e) = gather_constraints(state, e)?;
         acc.append(&mut con_e.0);
-        acc.push((t_e, Type::JSON));
+        acc.push((t_e, Type::JSON, e.clone()));
         Ok(acc)
       })?),
     )),
@@ -209,7 +214,10 @@ fn gather_constraints(
         let (type_k, con_k) = gather_constraints(state, k)?;
         let (type_v, con_v) = gather_constraints(state, v)?;
         acc.extend_from_slice(&[con_k.0, con_v.0].concat());
-        acc.extend_from_slice(&[(type_k, Type::JSON), (type_v, Type::JSON)]);
+        acc.extend_from_slice(&[
+          (type_k, Type::JSON, k.clone()),
+          (type_v, Type::JSON, v.clone()),
+        ]);
         Ok(acc)
       })?;
       Ok((Type::JSON, Constraints(cons)))
@@ -225,7 +233,9 @@ fn gather_constraints(
       let (type_x, con_x) = gather_constraints(state, x)?;
       let ret_type = Type::Var(state.fresh_mut());
       let mut constraints = Constraints([con_f.0, con_x.0].concat());
-      constraints.0.push((type_f, arr(type_x, ret_type.clone())));
+      constraints
+        .0
+        .push((type_f, arr(type_x, ret_type.clone()), expr.clone()));
       Ok((ret_type, constraints))
     },
     Expr::IfThenElse(i, t, e) => {
@@ -233,9 +243,10 @@ fn gather_constraints(
       let (type_t, con_t) = gather_constraints(state, t)?;
       let (type_e, con_e) = gather_constraints(state, e)?;
       let mut constraints = Constraints([con_i.0, con_t.0, con_e.0].concat());
-      constraints
-        .0
-        .extend_from_slice(&[(type_t.clone(), type_e), (Type::JSON, type_i)]);
+      constraints.0.extend_from_slice(&[
+        (type_t.clone(), type_e, expr.clone()),
+        (Type::JSON, type_i, *i.clone()),
+      ]);
       Ok((type_t, constraints))
     },
     Expr::Builtin(b) => gather_constraints(state, &var(b.show())),
