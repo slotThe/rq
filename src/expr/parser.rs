@@ -152,6 +152,16 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       .then(p_expr.clone())
       .map(|((i, t), e)| if_then_else(i, t, e));
 
+    // x.1, x.blah, .1, .blah, … See the docs of `mk_dot_syntax`.
+    let p_dot_syntax = move |head: Option<Expr>| {
+      just('.')
+        .ignore_then(
+          text::int(10).map(|i: String| num(i.parse::<f64>().unwrap()))
+            .or(p_varlike.or(p_str).map(expr_str))
+        )
+        .repeated().at_least(1)
+        .map(move |xs| mk_dot_syntax(head.clone(), xs))};
+
     let p_app = recursive(|p_app| {
       let fun = {
         // The f in f x.
@@ -159,17 +169,8 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
           .or(p_var)
           .or(p_app.clone().padded().delimited_by(just('('), just(')')));
         // Check for dot syntax: x.1, x.blah, …
-        head
-          .then(
-            just('.')
-              .ignore_then(
-                text::int(10)
-                  .map(|i: String| num(i.parse::<f64>().unwrap()))
-                  .or(p_varlike.or(p_str).map(expr_str)),
-              )
-              .repeated(),
-          )
-          .foldl(|acc, c| app(app(var("get"), c), acc))
+        head.clone().then_with(move |x| p_dot_syntax(Some(x)))
+          .or(head)
       };
       let go = fun // the f in f x
         .then(
@@ -182,6 +183,8 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
             p_obj.clone(),
             p_lam.clone().padded().delimited_by(just('('), just(')')),
             p_app.padded().delimited_by(just('('), just(')')),
+            p_dot_syntax(None).delimited_by(just('('), just(')')),
+            p_dot_syntax(None),
             p_expr.clone().padded().delimited_by(just('('), just(')')),
             p_expr.clone().padded(),
           ))
@@ -210,6 +213,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       p_app,
       p_lam,
       p_var,
+      p_dot_syntax(None),
       p_expr.clone().padded().delimited_by(just('('), just(')')),
     ))
     .boxed();
@@ -323,6 +327,27 @@ fn apply_op(a: Option<Expr>, (op, b): (Expr, Option<Expr>)) -> Option<Expr> {
     (None, Some(b)) => λ("x", app(app(op, var("x")), b)),
     (Some(a), Some(b)) => app(app(op, a), b),
   })
+}
+
+/// Imbue the dot syntax with meaning.
+///
+/// * head: is `None` if the syntax is of the form `.a.b.c`, in which case it
+///   will desugar to `λω. get a (get b (get c ω))`. A value of `Some(x)`
+///   instead indicates expressions of the form `x.a.b.c`; in that case, the
+///   desugared value will be `get a (get b (get c x))`.
+fn mk_dot_syntax(head: Option<Expr>, mut xs: Vec<Expr>) -> Expr {
+  fn go(xs: &[Expr], end: &Expr) -> Expr {
+    match xs {
+      [] => todo!(),
+      [x] => app(app(var("get"), x.clone()), end.clone()),
+      [x, ys @ ..] => app(app(var("get"), x.clone()), go(ys, end)),
+    }
+  }
+  xs.reverse();
+  match head {
+    Some(h) => go(&xs, &h),
+    None => λ("ω", go(&xs, &var("ω"))),
+  }
 }
 
 #[cfg(test)]

@@ -40,7 +40,10 @@ Some more usage examples:
 $ cat simple.json
 [{"name": "John Doe", "age": 43, "phone": +44 1234567"},{"name":"Alice"},{"name":"Bob", "age":42}]
 
-$ cat simple.json | rq 'map (\x -> x.age) | foldl (+) 0'
+$ cat simple.json | rq 'map .name'
+["John Doe","Alice","Bob"]
+
+$ cat simple.json | rq 'map .age | foldl (+) 0'
 85
 
 $ cat simple.json | rq 'filter (get "age" | (>= 42)) | map (\x -> { x.name: x.age })'
@@ -114,6 +117,11 @@ $ cat simple.json | rq 'filter (get "age" | (>= 42)) | map (\x -> { x.name: x.ag
 
         (λx → x.0.this) [{this: 4}]    ≡    4
 
+  Additionally, `.0` is sugar for `(|x| x.0)`.
+  This composes sanely:
+
+        .0.1.2  ≡  λx → get 0 (get 1 (get 2 x))
+
   Note that this syntax is only available if the to-be-indexed-thing is a variable.
 
         [1, 2, 3].0     # Parse error!
@@ -123,7 +131,7 @@ $ cat simple.json | rq 'filter (get "age" | (>= 42)) | map (\x -> { x.name: x.ag
         (get 0 | λx → { x.id: x.name }) [{id: 42, name: "Arthur"}, 4]
           ≡  { 42: Arthur }
 
-- Shadowed variables may be accessed using De Bruijn indices:
+- A shadowed variable may be accessed using its De Bruijn index:
 
         λ> (λx → λx → x@2) 1 2
         variable not in scope: x@2

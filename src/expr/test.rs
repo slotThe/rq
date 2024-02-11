@@ -16,6 +16,7 @@ mod parser {
     parse_eq!("(\\x -> x) 5", app(λ("x", var("x")), num(5)));
     parse_eq!("λx → x 5", λ("x", app(var("x"), num(5))));
     parse_eq!("map (|x| x) [1]", app(app(var("map"), λ("x", var("x"))), arr(&[num(1)])));
+    parse_eq!("map (get 0 | (+ 1)) [[1],[2]]", app(app(var("map"), λ("x", app(λ("x", app(app(Builtin(Add), var("x")), num(1))), app(app(var("get"), num(0)), var("x"))))), arr(&[arr(&[num(1)]), arr(&[num(2)])])));
     parse_eq!("|x| map (λy → [get 0 y, 2]) x", λ("x", app(app(var("map"), λ("y", arr(&[app(app(var("get"), num(0)), var("y")), num(2)]))), var("x"))));
     parse_eq!("(get 0) [0]", app(app(var("get"), num(0)), arr(&[num(0)])));
     parse_eq!("   ( ( ((( get 0 ))   )) [0]   )  ", app(app(var("get"), num(0)), arr(&[num(0)])));
@@ -70,7 +71,10 @@ mod parser {
 
   #[test]
   fn dot_patterns() {
-    parse_eq!("\\x -> x.1.a.\"b\".c.4", λ("x", app(app(var("get"), num(4)), app(app(var("get"), expr_str("c")), app(app(var("get"), expr_str("b")), app(app(var("get"), expr_str("a")), app(app(var("get"), num(1)), var("x"))))))))
+    parse_eq!("\\x -> x.1.a.\"b\".c.4", λ("x", app(app(var("get"), num(4)), app(app(var("get"), expr_str("c")), app(app(var("get"), expr_str("b")), app(app(var("get"), expr_str("a")), app(app(var("get"), num(1)), var("x"))))))));
+    parse_eq!(".0", λ("ω", app(app(var("get"), num(0)), var("ω"))));
+    parse_eq!("map .0 [1]", app(app(var("map"), λ("ω", app(app(var("get"), num(0)), var("ω")))), arr(&[num(1)])));
+    parse_eq!("filter (.0 | (= 1)) [[1],[2]]", app(app(var("filter"), λ("x", app(λ("x", app(app(Builtin(Eq), var("x")), num(1))), app(λ("ω", app(app(var("get"), num(0)), var("ω"))), var("x"))))), arr(&[arr(&[num(1)]), arr(&[num(2)])])));
   }
 
   #[test]
