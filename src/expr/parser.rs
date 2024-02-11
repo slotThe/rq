@@ -181,7 +181,8 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
             p_array.clone(),
             p_obj.clone(),
             p_lam.clone().padded().delimited_by(just('('), just(')')),
-            p_app,
+            p_app.padded().delimited_by(just('('), just(')')),
+            p_expr.clone().padded().delimited_by(just('('), just(')')),
             p_expr.clone().padded(),
           ))
           .padded()
