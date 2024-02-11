@@ -302,23 +302,15 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
     .foldl(apply_op).map(|x| x.unwrap())
     .boxed();
 
-    let p_many = p_ops_comp.clone()
-      .then(just('|').padded().ignore_then(p_ops_comp.clone()).repeated());
-    choice((
-      // (get 0 | foldl (+) 0) [[1]]
-      just('(').padded()
-        .ignore_then(p_many.clone()
-                     .foldl(|a, b| λ("x", app(b.clone(), app(a, var("x"))))))
-        .then_ignore(just(')').padded())
-        .then(p_ops_comp.clone().padded().repeated())
-        .foldl(app),
-      // get 0 | foldl (+) 0
-      p_many.clone()
-        .foldl(|a, b| λ("x", app(b.clone(), app(a, var("x"))))),
-    ))
+    let parse = p_ops_comp.clone()
+      .then(just('|').padded().ignore_then(p_ops_comp.clone()).repeated())
+      .foldl(|a, b| λ("x", app(b.clone(), app(a, var("x")))));
+    parse.clone().delimited_by(just('('), just(')')).or(parse.clone())
   });
 
-  p_expr
+  p_expr.clone()
+    .then(p_expr.clone().padded().repeated())
+    .foldl(app)
 }
 
 /// Apply an operation to possibly non-existent operands. The presence or
