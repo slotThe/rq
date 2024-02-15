@@ -14,10 +14,9 @@
 use std::collections::BTreeMap;
 
 use ordered_float::OrderedFloat;
-use thiserror::Error;
 
 use self::stdlib::Builtin;
-use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, if_then_else, λ, Const, Expr}, r#type::checker::TCExpr};
+use crate::{error::EvalError, expr::{app, de_bruijn::{DBEnv, DBVar}, if_then_else, λ, Const, Expr}, r#type::checker::TCExpr};
 
 pub mod stdlib;
 #[cfg(test)]
@@ -31,12 +30,6 @@ impl TCExpr {
       .to_sem(&DBEnv::from_iter_with(env.clone(), Sem::SBuiltin))?
       .reify()
   }
-}
-
-#[derive(Debug, Clone, Error, PartialEq)]
-pub enum EvalError {
-  #[error("Wrong index: {0} not found in {1}")]
-  WrongIndex(String, Expr),
 }
 
 fn num_vars(names: &[String], var: &str) -> isize {

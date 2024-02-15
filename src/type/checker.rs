@@ -1,9 +1,7 @@
 use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity};
 
-use thiserror::Error;
-
 use super::{arr, TVar, Type};
-use crate::{expr::{de_bruijn::{DBEnv, DBVar}, var, Expr}, util::style};
+use crate::{error::TypeCheckError, expr::{de_bruijn::DBEnv, var, Expr}};
 
 /// A type-checked expression.
 #[derive(Debug)]
@@ -63,19 +61,6 @@ impl Type {
     enum_tvars(&mut tvars, self);
     downscale(&tvars.into_iter().zip(0..).collect(), self);
   }
-}
-
-#[derive(Debug, Clone, Error, PartialEq)]
-pub enum TypeCheckError {
-  #[error("Variable not in scope: {0}")]
-  VariableNotInScope(DBVar),
-  #[error("Can't unify {} with {} in expression {}", style(.0), style(.1), style(.2))]
-  UnificationError(Type, Type, Expr),
-  #[error(
-    "Occurs check: can't construct infinite type {} ≡ {} in expression {}",
-    style(.0), style(.1), style(.2)
-  )]
-  OccursCheck(Type, Type, Expr),
 }
 
 /// Normalise a type checking error and emit it.

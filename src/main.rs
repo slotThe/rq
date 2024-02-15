@@ -8,6 +8,7 @@
 #[macro_use]
 extern crate lazy_static;
 
+mod error;
 mod eval;
 mod expr;
 mod r#type;
@@ -15,21 +16,22 @@ mod util;
 
 use std::{env, io::{self, BufRead, Read, Write}};
 
-use anyhow::Result;
 use expr::{parser::parse_main, Expr};
 
-use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{app, json::json_to_expr}};
+use crate::{error::print_err, eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{app, json::json_to_expr}};
 
-fn main() -> Result<()> {
+fn main() -> miette::Result<()> {
+  miette::set_panic_hook();
+
   let arg = env::args().nth(1);
   if arg.is_none() || arg == Some("repl".to_string()) {
-    repl()
+    repl().map_err(|e| miette::miette!("{e:?}"))
   } else {
     oneshot()
   }
 }
 
-fn repl() -> Result<()> {
+fn repl() -> anyhow::Result<()> {
   let mut buffer = String::new();
   let stdin = io::stdin();
   let mut in_handle = stdin.lock();
@@ -64,9 +66,9 @@ fn repl() -> Result<()> {
           match expr.check(&STDLIB_TYPES) {
             Ok(expr) => match expr.eval(&STDLIB_CTX) {
               Ok(expr) => writeln!(out_handle, "{expr}")?,
-              Err(err) => writeln!(out_handle, "{err}")?,
+              Err(err) => print_err(&mut out_handle, err)?,
             },
-            Err(err) => writeln!(out_handle, "{err}")?,
+            Err(err) => print_err(&mut out_handle, err)?,
           };
         }
       },
@@ -78,16 +80,23 @@ fn repl() -> Result<()> {
   Ok(())
 }
 
-fn oneshot() -> Result<()> {
+fn oneshot() -> miette::Result<()> {
   let mut input = String::new();
-  io::stdin().read_to_string(&mut input)?;
+  io::stdin()
+    .read_to_string(&mut input)
+    .map_err(|e| miette::miette!("{e:?}"))?;
   if let Some(expr) = parse_main(&env::args().collect::<Vec<_>>()[1]) {
     println!(
       "{}",
-      app(expr, json_to_expr(&serde_json::from_str(&input)?))
-        .check(&STDLIB_TYPES)?
-        .eval(&STDLIB_CTX)?
-        .to_json()
+      app(
+        expr,
+        json_to_expr(
+          &serde_json::from_str(&input).map_err(|e| miette::miette!("{e:?}"))?
+        )
+      )
+      .check(&STDLIB_TYPES)?
+      .eval(&STDLIB_CTX)?
+      .to_json()
     )
   }
   Ok(())
