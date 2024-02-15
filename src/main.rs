@@ -1,6 +1,5 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(extend_one)]
 #![feature(iter_intersperse)]
 #![feature(stmt_expr_attributes)]
 #![feature(trait_alias)]

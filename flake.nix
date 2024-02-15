@@ -2,43 +2,37 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
+    nci = {
+      url = "github:yusdacra/nix-cargo-integration";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
     };
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        overlays = [ rust-overlay.overlays.default ];
-        pkgs = import nixpkgs { inherit system overlays; };
-        toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-        platform = pkgs.makeRustPlatform {
-          cargo = toolchain;
-          rustc = toolchain;
-        };
-        cargoMeta =
-          (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package;
-      in with pkgs; {
-        packages = {
-          rq = platform.buildRustPackage {
-            pname = "rq";
-            inherit (cargoMeta) version;
-            src = ./.;
-            meta = {
-              license = lib.licenses.gpl3;
-              description =
-                "a tiny functional language with which you can manipulate JSON";
+  outputs = inputs @ { flake-parts, flake-utils, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = flake-utils.lib.defaultSystems;
+      imports = [ inputs.nci.flakeModule ];
+      perSystem = { config, pkgs, ... }:
+        let outputs = config.nci.outputs.rq;
+        in {
+          nci = {
+            toolchainConfig = ./rust-toolchain.toml;
+            projects.rq-project = {
+              path = ./.;
             };
-            cargoLock.lockFile = ./Cargo.lock;
+            crates.rq = { };
           };
 
-          default = self.packages."${system}".rq;
-        };
+          packages = rec {
+            rq = outputs.packages.release;
+            default = rq;
+          };
 
-        devShells.default =
-          mkShell { buildInputs = [ toolchain rust-analyzer ]; };
-      });
+          devShells.default = outputs.devShell;
+        };
+    };
 }
