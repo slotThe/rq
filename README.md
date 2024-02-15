@@ -131,6 +131,11 @@ $ cat simple.json | rq 'filter (get "age" | (>= 42)) | map (\x -> { x.name: x.ag
         (get 0 | λx → { x.id: x.name }) [{id: 42, name: "Arthur"}, 4]
           ≡  { 42: Arthur }
 
+- Lambdas can be written taking multiple arguments,
+  in which case they are automatically curried:
+
+        \x y -> x    ≡    \x -> \y -> x    ≡    |x, y| x
+
 - A shadowed variable may be accessed using its De Bruijn index:
 
         λ> (λx → λx → x@2) 1 2

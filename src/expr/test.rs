@@ -52,6 +52,10 @@ mod parser {
     parse_eq!("\\x -> x", lambda.clone());
     parse_eq!("λx → x", lambda.clone());
     parse_eq!("|  x  | x", lambda);
+    let lambda2 = λ("x", λ("y", var("x")));
+    parse_eq!("λx y → x", lambda2.clone());
+    parse_eq!("|x,y|x", lambda2.clone());
+    parse_eq!("|  x ,   y | x", lambda2.clone());
   }
 
   #[test]

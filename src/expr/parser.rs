@@ -134,13 +134,14 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
 
     let p_lam = {
       let haskell_head = (just("\\").or(just("λ")).padded())
-        .ignore_then(p_varlike)
+        .ignore_then(p_varlike.padded().repeated().at_least(1))
         .then_ignore(just("->").or(just("→")).padded());
-      let rust_head = p_varlike.padded().delimited_by(just('|'), just('|'));
+      let rust_head = p_varlike.padded().separated_by(just(',')).at_least(1)
+        .delimited_by(just('|'), just('|'));
       haskell_head.or(rust_head)
         .padded()
         .then(p_expr.clone())
-        .map(|(h, b)| λ(h.as_str(), b))
+        .map(|(hs, b)| hs.iter().rev().fold(b, |acc, h| λ(h.as_str(), acc)))
         .labelled("lambda")
     };
 
