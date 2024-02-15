@@ -120,7 +120,7 @@ $ cat simple.json | rq 'filter (get "age" | (>= 42)) | map (\x -> { x.name: x.ag
   Additionally, `.0` is sugar for `(|x| x.0)`.
   This composes sanely:
 
-        .0.1.2  ≡  λx → get 0 (get 1 (get 2 x))
+        .0.1.2  ≡  λx → get 2 (get 1 (get 0 x))
 
   Note that this syntax is only available if the to-be-indexed-thing is a variable.
 
@@ -184,7 +184,7 @@ $ cat simple.json | rq 'filter (get "age" | (>= 42)) | map (\x -> { x.name: x.ag
 
   ``` agda
   -- `map f xs` applies `f` to every "value" in `xs`, which may be an
-  -- array (in which case value means element), or an array (in which
+  -- array (in which case value means element), or an object (in which
   -- case it really means value).
   map : (JSON → JSON) → JSON → JSON
 
