@@ -14,6 +14,7 @@ mod util;
 use std::{env, io::{self, BufRead, Read, Write}};
 
 use anyhow::Result;
+use eval::stdlib::STDLIB_HELP;
 use expr::{parser::parse_main, Expr};
 
 use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{app, json::json_to_expr}};
