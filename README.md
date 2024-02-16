@@ -269,6 +269,24 @@ Additionally, the following keywords are available:
         λ> :t \x -> x x
         Occurs check: can't construct infinite type: b ≡ b → c
 
+  - Get information on a builtin function with `:i`:
+
+        λ> :i <
+        e < e' checks whether e is less than e'
+
+        λ> :i map
+        map f xs applies f to every value in xs, which may be an
+        array (in which case »value« means element) or an object
+        (in which case it really means value).
+
+  - To list all builtin functions, use `:l`:
+
+        λ> :i map
+        +	Add two number, or concatenate two strings.
+        -	Subtract two numbers.
+        <	e < e' checks whether e is less than e'
+        … and so on …
+
   - Debugging: `:d`
 
         λ> :d \x -> x 4 "flurble"

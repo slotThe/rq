@@ -11,7 +11,7 @@ mod expr;
 mod r#type;
 mod util;
 
-use std::{env, io::{self, BufRead, Read, Write}};
+use std::{collections::BTreeMap, env, io::{self, BufRead, Read, Write}};
 
 use anyhow::Result;
 use eval::stdlib::STDLIB_HELP;
@@ -47,6 +47,24 @@ fn repl() -> Result<()> {
       _ if buffer.starts_with(":d ") => {
         parse_main(&buffer[3..]).map(|e| writeln!(out_handle, "{:?}", e));
       },
+      _ if buffer.starts_with(":i ") => {
+        match STDLIB_HELP.get(&buffer[3..].trim()) {
+          Some(help) => writeln!(out_handle, "{}", help.wrap("", 50))?,
+          None => writeln!(
+            out_handle,
+            "Error: Found no builtin function with that name."
+          )?,
+        };
+      },
+      _ if buffer.starts_with(":l") => STDLIB_HELP
+        .iter()
+        // Deduping; XXX: this should probably be handled more gracefully.
+        .map(|(name, help)| (help, name))
+        .collect::<BTreeMap<_, _>>()
+        .iter()
+        .for_each(|(help, name)| {
+          let _ = writeln!(out_handle, "{name}	{}", help.wrap("	", 50));
+        }),
       _ if buffer.starts_with(":dp ") => {
         parse_main(&buffer[4..]).map(|e| writeln!(out_handle, "{:#?}", e));
       },
