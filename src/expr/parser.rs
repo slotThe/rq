@@ -206,6 +206,11 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
     // NOTE: boxed() does type erasure, which is quite crucial for the
     // operator parsers. Otherwise, chumsky compiles for… quite a while (as
     // in, probably hours, if not days).
+    let p_symbol = |b: Builtin| {
+      choice(b.names().into_iter().map(just).collect::<Vec<_>>())
+        .to(Expr::Builtin(b))
+    };
+
     let all_exprs = choice((
       p_obj,
       p_array,
@@ -220,8 +225,8 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
     .boxed();
 
     let mul_sym = choice((
-      just('*').or(just('·')).to(Expr::Builtin(Builtin::Mul)),
-      just('/').or(just('÷')).to(Expr::Builtin(Builtin::Div)),
+      p_symbol(Builtin::Mul),
+      p_symbol(Builtin::Div),
     )).padded();
     let p_ops_mul = choice((
       // Operator sections: (= 3), (3 =)
@@ -247,8 +252,8 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
     .boxed();
 
     let sum_sym = choice((
-      just('+').to(Expr::Builtin(Builtin::Add)),
-      just('-').to(Expr::Builtin(Builtin::Sub)),
+      p_symbol(Builtin::Add),
+      p_symbol(Builtin::Sub),
     )).padded();
     let p_ops_sum = choice((
       // Operator sections: (= 3), (3 =)
@@ -274,15 +279,12 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
     .boxed();
 
     let comp_sym = choice((
-      just("==").or(just("=")).to(Expr::Builtin(Builtin::Eq)),
-      just("!=")
-        .or(just("/="))
-        .or(just("≠"))
-        .to(Expr::Builtin(Builtin::Neq)),
-      just("<=").or(just("≤")).to(Expr::Builtin(Builtin::Leq)),
-      just(">=").or(just("≥")).to(Expr::Builtin(Builtin::Geq)),
-      just('<').to(Expr::Builtin(Builtin::Le)),
-      just('>').to(Expr::Builtin(Builtin::Ge)),
+      p_symbol(Builtin::Eq),
+      p_symbol(Builtin::Neq),
+      p_symbol(Builtin::Leq),
+      p_symbol(Builtin::Geq),
+      p_symbol(Builtin::Le),
+      p_symbol(Builtin::Ge),
     )).padded();
     let p_ops_comp = choice((
       // Operator sections: (= 3), (3 =)
