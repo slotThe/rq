@@ -70,6 +70,36 @@ impl Builtin {
   }
 }
 
+macro_rules! mk_fun {
+  // No aliases
+  ($name:expr, $type:expr, $help:expr $(,)?) => {
+    (
+      $name,
+      StdFun {
+        name:      $name.show(),
+        aliases:   vec![],
+        builtin:   $name,
+        expr_type: $type,
+        help:      $help,
+      },
+    )
+  };
+  // Aliases
+  ($name:expr, $type:expr, $help:expr, $( $alias:expr ),+  $(,)?) => {{
+    let aliases = vec![$($alias),+];
+    (
+      $name,
+      StdFun {
+        name:      $name.show(),
+        aliases:   aliases.clone(),
+        builtin:   $name,
+        expr_type: $type,
+        help:      $help.aliases([[$name.show()].to_vec(), aliases].concat()),
+      },
+    )
+  }};
+}
+
 lazy_static! {
   pub static ref STDLIB_HELP: BTreeMap<&'static str, Blocks> =
     STDLIB.clone().into_values()
@@ -81,195 +111,157 @@ lazy_static! {
       .concat()
     })
     .collect();
-
+  //
   pub static ref STDLIB_CTX: BTreeMap<&'static str, Builtin> =
     STDLIB.clone().values().map(|f| (f.name, f.builtin)).collect();
-
+  //
   pub static ref STDLIB_TYPES: BTreeMap<String, Type> =
     STDLIB.clone().into_values().map(|f| (f.name.to_string(), f.expr_type)).collect();
+}
 
+lazy_static! {
   pub static ref STDLIB: BTreeMap<Builtin, StdFun> = BTreeMap::from([
-    (
+    mk_fun!(
       Builtin::Id,
-      StdFun {
-        name:      Builtin::Id.show(),
-        aliases:   vec![],
-        builtin:   Builtin::Id,
-        expr_type: arr(Type::JSON, Type::JSON),
-        help:      Blocks::to_plain("Return the argument."),
-      },
+      arr(Type::JSON, Type::JSON),
+      Blocks::to_plain("Return the argument.")
     ),
-    (
+    mk_fun!(
       Builtin::BConst,
-      StdFun {
-        name:      Builtin::BConst.show(),
-        aliases:   vec![],
-        builtin:   Builtin::BConst,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::new().fancy("const a b").plain("returns").fancy("a."),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::new()
+        .fancy("const a b")
+        .plain("returns")
+        .fancy("a.")
     ),
-    (
+    mk_fun!(
       Builtin::Get,
-      StdFun {
-        name:      Builtin::Get.show(),
-        aliases:   vec![],
-        builtin:   Builtin::Get,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::new().fancy("get i x").plain("gets the").fancy("i'th")
-          .plain("thing out of").fancy("x,").plain("where").fancy("i")
-          .plain("should be (evaluate to) a number or a string, and").fancy("x")
-          .plain("should evaluate to an array or object."),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::new()
+        .fancy("get i x")
+        .plain("gets the")
+        .fancy("i'th")
+        .plain("thing out of")
+        .fancy("x,")
+        .plain("where")
+        .fancy("i")
+        .plain("should be (evaluate to) a number or a string, and")
+        .fancy("x")
+        .plain("should evaluate to an array or object.")
     ),
-    (
+    mk_fun!(
       Builtin::Map,
-      StdFun {
-        name:      Builtin::Map.show(),
-        aliases:   vec![],
-        builtin:   Builtin::Map,
-        expr_type: arr(arr(Type::JSON, Type::JSON), arr(Type::JSON, Type::JSON)),
-        help:      Blocks::new().fancy("map f xs").plain("applies").fancy("f")
-          .plain("to every value in").fancy("xs,")
-          .plain("which may be an array (in which case »value« means element) or an object (in \
-                  which case it really means value)."),
-      },
-    ),
-    (
-      Builtin::Filter,
-      StdFun {
-        name:      Builtin::Filter.show(),
-        aliases:   vec![],
-        builtin:   Builtin::Filter,
-        expr_type: arr(arr(Type::JSON, Type::JSON), arr(Type::JSON, Type::JSON)),
-        help:      Blocks::new().fancy("filter p xs").plain("applies the predicate").fancy("p")
-          .plain("to every value of").fancy("xs.")
-          .plain("Keep the elements for which the predicate returns truthy."),
-      },
-    ),
-    (
-      Builtin::Foldl,
-      StdFun {
-        name:      Builtin::Foldl.show(),
-        aliases:   vec![],
-        builtin:   Builtin::Foldl,
-        expr_type: arr(
-          // (b -> a -> b) -> b -> [a] -> b
-          arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-          arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      arr(arr(Type::JSON, Type::JSON), arr(Type::JSON, Type::JSON)),
+      Blocks::new()
+        .fancy("map f xs")
+        .plain("applies")
+        .fancy("f")
+        .plain("to every value in")
+        .fancy("xs,")
+        .plain(
+          "which may be an array (in which case »value« means element) or an object (in \
+           which case it really means value)."
         ),
-        help:      Blocks::new()
-          .plain("Left-associative fold over an array or (values of an) object; e.g.,")
-          .fancy("    foldl f α [x₁, x₂, …, xₙ]  ≡  f(f(…f(α, x₁), …), xₙ)."),
-      },
     ),
-    (
+    mk_fun!(
+      Builtin::Filter,
+      arr(arr(Type::JSON, Type::JSON), arr(Type::JSON, Type::JSON)),
+      Blocks::new()
+        .fancy("filter p xs")
+        .plain("applies the predicate")
+        .fancy("p")
+        .plain("to every value of")
+        .fancy("xs.")
+        .plain("Keep the elements for which the predicate returns truthy."),
+    ),
+    mk_fun!(
+      Builtin::Foldl,
+      arr(
+        arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+        arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      ),
+      Blocks::new()
+        .plain("Left-associative fold over an array or (values of an) object; e.g.,")
+        .fancy("    foldl f α [x₁, x₂, …, xₙ]  ≡  f(f(…f(α, x₁), …), xₙ)."),
+    ),
+    mk_fun!(
       Builtin::Add,
-      StdFun {
-        name:      Builtin::Add.show(),
-        aliases:   vec![],
-        builtin:   Builtin::Add,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::to_plain("Add two numbers or concatenate two strings."),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::to_plain("Add two numbers or concatenate two strings."),
     ),
-    (
+    mk_fun!(
       Builtin::Sub,
-      StdFun {
-        name:      Builtin::Sub.show(),
-        aliases:   vec![],
-        builtin:   Builtin::Sub,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::to_plain("Subtract two numbers."),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::to_plain("Subtract two numbers."),
     ),
-    (
+    mk_fun!(
       Builtin::Mul,
-      StdFun {
-        name:      Builtin::Mul.show(),
-        aliases:   vec!["·"],
-        builtin:   Builtin::Mul,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::to_plain("Multiply two numbers.").aliases(vec!["·"]),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::to_plain("Multiply two numbers."),
+      "·"
     ),
-    (
+    mk_fun!(
       Builtin::Div,
-      StdFun {
-        name:      Builtin::Div.show(),
-        aliases:   vec!["/"],
-        builtin:   Builtin::Div,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::to_plain(
-          "Divide two numbers. No guarantees if the denominator is zero—the world might \
-           explode.",
-        ).aliases(vec!["/"]),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::to_plain(
+        "Divide two numbers. No guarantees if the denominator is zero—the world might \
+         explode.",
+      ),
+      "/"
     ),
-    (
+    mk_fun!(
       Builtin::Eq,
-      StdFun {
-        name:      Builtin::Eq.show(),
-        aliases:   vec![],
-        builtin:   Builtin::Eq,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::to_plain("Check two expressions for equality."),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::to_plain("Check two expressions for equality."),
     ),
-    (
+    mk_fun!(
       Builtin::Neq,
-      StdFun {
-        name:      Builtin::Neq.show(),
-        aliases:   vec!["!=", "/="],
-        builtin:   Builtin::Neq,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::to_plain("Check two expressions for non-equality.")
-          .aliases(vec!["!=", "/="]),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::to_plain("Check two expressions for non-equality."),
+      "!=",
+      "/=",
     ),
-    (
+    mk_fun!(
       Builtin::Le,
-      StdFun {
-        name:      Builtin::Le.show(),
-        aliases:   vec![],
-        builtin:   Builtin::Le,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::new().fancy("e < e'").plain("checks whether")
-          .fancy("e").plain("is less than").fancy("e'."),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::new()
+        .fancy("e < e'")
+        .plain("checks whether")
+        .fancy("e")
+        .plain("is less than")
+        .fancy("e'."),
     ),
-    (
+    mk_fun!(
       Builtin::Leq,
-      StdFun {
-        name:      Builtin::Leq.show(),
-        aliases:   vec!["<="],
-        builtin:   Builtin::Leq,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::new().fancy("e ≤ e'").plain("checks whether")
-          .fancy("e").plain("is less-or-equal-to").fancy("e'.").aliases(vec!["<="]),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::new()
+        .fancy("e ≤ e'")
+        .plain("checks whether")
+        .fancy("e")
+        .plain("is less-or-equal-to")
+        .fancy("e'."),
+      "<="
     ),
-    (
+    mk_fun!(
       Builtin::Ge,
-      StdFun {
-        name:      Builtin::Ge.show(),
-        aliases:   vec![],
-        builtin:   Builtin::Ge,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::new().fancy("e > e'").plain("checks whether")
-          .fancy("e").plain("is greater than").fancy("e'."),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::new()
+        .fancy("e > e'")
+        .plain("checks whether")
+        .fancy("e")
+        .plain("is greater than")
+        .fancy("e'."),
     ),
-    (
+    mk_fun!(
       Builtin::Geq,
-      StdFun {
-        name:      Builtin::Geq.show(),
-        aliases:   vec![">="],
-        builtin:   Builtin::Geq,
-        expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::new().fancy("e ≥ e'").plain("checks whether")
-          .fancy("e").plain("is greater-or-equal-to").fancy("e'.").aliases(vec![">="]),
-      },
+      arr(Type::JSON, arr(Type::JSON, Type::JSON)),
+      Blocks::new()
+        .fancy("e ≥ e'")
+        .plain("checks whether")
+        .fancy("e")
+        .plain("is greater-or-equal-to")
+        .fancy("e'."),
+      ">="
     ),
   ]);
 }
