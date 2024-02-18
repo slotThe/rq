@@ -97,4 +97,18 @@ impl Blocks {
         .collect(),
     )
   }
+
+  pub fn aliases(mut self, als: Vec<&str>) -> Blocks {
+    self.0.extend_from_slice(
+      &[
+        [Block::Plain("Aliases:".to_string())].to_vec(),
+        als
+          .iter()
+          .map(|a| Block::Fancy(a.to_string()))
+          .collect::<Vec<_>>(),
+      ]
+      .concat(),
+    );
+    self
+  }
 }

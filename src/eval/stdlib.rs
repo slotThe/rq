@@ -190,7 +190,7 @@ lazy_static! {
         aliases:   vec!["·"],
         builtin:   Builtin::Mul,
         expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::to_plain("Multiply two numbers."),
+        help:      Blocks::to_plain("Multiply two numbers.").aliases(vec!["·"]),
       },
     ),
     (
@@ -203,7 +203,7 @@ lazy_static! {
         help:      Blocks::to_plain(
           "Divide two numbers. No guarantees if the denominator is zero—the world might \
            explode.",
-        ),
+        ).aliases(vec!["/"]),
       },
     ),
     (
@@ -223,7 +223,8 @@ lazy_static! {
         aliases:   vec!["!=", "/="],
         builtin:   Builtin::Neq,
         expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
-        help:      Blocks::to_plain("Check two expressions for non-equality."),
+        help:      Blocks::to_plain("Check two expressions for non-equality.")
+          .aliases(vec!["!=", "/="]),
       },
     ),
     (
@@ -245,7 +246,7 @@ lazy_static! {
         builtin:   Builtin::Leq,
         expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
         help:      Blocks::new().fancy("e ≤ e'").plain("checks whether")
-          .fancy("e").plain("is less-or-equal-to").fancy("e'."),
+          .fancy("e").plain("is less-or-equal-to").fancy("e'.").aliases(vec!["<="]),
       },
     ),
     (
@@ -267,7 +268,7 @@ lazy_static! {
         builtin:   Builtin::Geq,
         expr_type: arr(Type::JSON, arr(Type::JSON, Type::JSON)),
         help:      Blocks::new().fancy("e ≥ e'").plain("checks whether")
-          .fancy("e").plain("is greater-or-equal-to").fancy("e'."),
+          .fancy("e").plain("is greater-or-equal-to").fancy("e'.").aliases(vec![">="]),
       },
     ),
   ]);
