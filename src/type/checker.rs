@@ -1,6 +1,4 @@
-use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity};
-
-use thiserror::Error;
+use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity, error::Error, fmt::Display};
 
 use super::{arr, TVar, Type};
 use crate::{expr::{de_bruijn::{DBEnv, DBVar}, var, Expr}, util::style};
@@ -65,17 +63,35 @@ impl Type {
   }
 }
 
-#[derive(Debug, Clone, Error, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TypeCheckError {
-  #[error("Variable not in scope: {0}")]
   VariableNotInScope(DBVar),
-  #[error("Can't unify {} with {} in expression {}", style(.0), style(.1), style(.2))]
   UnificationError(Type, Type, Expr),
-  #[error(
-    "Occurs check: can't construct infinite type {} ≡ {} in expression {}",
-    style(.0), style(.1), style(.2)
-  )]
   OccursCheck(Type, Type, Expr),
+}
+
+impl Error for TypeCheckError {}
+
+impl Display for TypeCheckError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      TypeCheckError::VariableNotInScope(v) => write!(f, "Variable not in scope: {v}"),
+      TypeCheckError::UnificationError(t1, t2, e) => write!(
+        f,
+        "Can't unify {} with {} in expression {}",
+        style(t1),
+        style(t2),
+        style(e)
+      ),
+      TypeCheckError::OccursCheck(t1, t2, e) => write!(
+        f,
+        "Occurs check: can't construct infinite type {} ≡ {} in expression {}",
+        style(t1),
+        style(t2),
+        style(e)
+      ),
+    }
+  }
 }
 
 /// Normalise a type checking error and emit it.

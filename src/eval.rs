@@ -11,13 +11,12 @@
 //! [Building Fast Functional Languages Fast]: https://www.youtube.com/watch?v=gbmURWs_SaU&pp=ygUiYnVpbGRpbmcgZnVuY3Rpb25hbCBsYW5ndWFnZXMgZmFzdA%3D%3D
 //! [Fall-From-Grace]: https://github.com/Gabriella439/grace
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, error::Error, fmt::Display};
 
 use ordered_float::OrderedFloat;
-use thiserror::Error;
 
 use self::stdlib::Builtin;
-use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, if_then_else, λ, Const, Expr}, r#type::checker::TCExpr};
+use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, if_then_else, λ, Const, Expr}, r#type::checker::TCExpr, util::style};
 
 pub mod stdlib;
 #[cfg(test)]
@@ -33,10 +32,24 @@ impl TCExpr {
   }
 }
 
-#[derive(Debug, Clone, Error, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum EvalError {
-  #[error("Wrong index: {0} not found in {1}")]
   WrongIndex(String, Expr),
+}
+
+impl Error for EvalError {}
+
+impl Display for EvalError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      EvalError::WrongIndex(ix, e) => write!(
+        f,
+        "index {} out of scope in expression {}",
+        style(ix),
+        style(e)
+      ),
+    }
+  }
 }
 
 fn num_vars(names: &[String], var: &str) -> isize {
