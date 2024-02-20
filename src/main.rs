@@ -1,10 +1,8 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(iter_intersperse)]
+#![feature(lazy_cell)]
 #![feature(try_blocks)]
-
-#[macro_use]
-extern crate lazy_static;
 
 mod eval;
 mod expr;

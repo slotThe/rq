@@ -1,4 +1,6 @@
-use std::{collections::BTreeMap, fmt::{self, Display}};
+//! The standard library.
+
+use std::{collections::BTreeMap, fmt::{self, Display}, sync::LazyLock};
 
 use self::pretty::Blocks;
 use crate::r#type::{arr, Type};
@@ -100,9 +102,18 @@ macro_rules! mk_fun {
   }};
 }
 
-lazy_static! {
-  pub static ref STDLIB_HELP: BTreeMap<&'static str, Blocks> =
-    STDLIB.clone().into_values()
+pub static STDLIB_CTX: LazyLock<BTreeMap<&'static str, Builtin>> = LazyLock::new(|| {
+  STDLIB
+    .clone()
+    .values()
+    .map(|f| (f.name, f.builtin))
+    .collect::<BTreeMap<&'static str, Builtin>>()
+});
+
+pub static STDLIB_HELP: LazyLock<BTreeMap<&'static str, Blocks>> = LazyLock::new(|| {
+  STDLIB
+    .clone()
+    .into_values()
     .flat_map(|f| {
       [
         [(f.name, f.help.clone())].to_vec(),
@@ -110,17 +121,19 @@ lazy_static! {
       ]
       .concat()
     })
-    .collect();
-  //
-  pub static ref STDLIB_CTX: BTreeMap<&'static str, Builtin> =
-    STDLIB.clone().values().map(|f| (f.name, f.builtin)).collect();
-  //
-  pub static ref STDLIB_TYPES: BTreeMap<String, Type> =
-    STDLIB.clone().into_values().map(|f| (f.name.to_string(), f.expr_type)).collect();
-}
+    .collect()
+});
 
-lazy_static! {
-  pub static ref STDLIB: BTreeMap<Builtin, StdFun> = BTreeMap::from([
+pub static STDLIB_TYPES: LazyLock<BTreeMap<String, Type>> = LazyLock::new(|| {
+  STDLIB
+    .clone()
+    .into_values()
+    .map(|f| (f.name.to_string(), f.expr_type))
+    .collect()
+});
+
+pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
+  BTreeMap::from([
     mk_fun!(
       Builtin::Id,
       arr(Type::JSON, Type::JSON),
@@ -263,5 +276,5 @@ lazy_static! {
         .fancy("e'."),
       ">="
     ),
-  ]);
-}
+  ])
+});
