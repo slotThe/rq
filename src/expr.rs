@@ -1,9 +1,7 @@
 use std::{collections::BTreeMap, fmt::{self, Display}};
 
-use ordered_float::OrderedFloat;
-
 use self::de_bruijn::DBVar;
-use crate::{eval::stdlib::Builtin, util::{fmt_array, fmt_object}};
+use crate::{eval::stdlib::Builtin, util::{fmt_array, fmt_object, ord_f64::OrdF64}};
 
 pub mod de_bruijn;
 pub mod json;
@@ -15,7 +13,7 @@ pub mod test;
 pub enum Const {
   Null,
   Bool(bool),
-  Num(OrderedFloat<f64>),
+  Num(OrdF64),
   String(String),
 }
 
@@ -84,7 +82,7 @@ pub fn λ(h: &str, b: Expr) -> Expr { Expr::Lam(h.to_string(), Box::new(b)) }
 pub fn if_then_else(i: Expr, t: Expr, e: Expr) -> Expr {
   Expr::IfThenElse(Box::new(i), Box::new(t), Box::new(e))
 }
-pub fn num(n: impl Into<f64>) -> Expr { Expr::Const(Const::Num(OrderedFloat(n.into()))) }
+pub fn num(n: impl Into<OrdF64>) -> Expr { Expr::Const(Const::Num(n.into())) }
 pub fn expr_str<S: ToString>(s: S) -> Expr { Expr::Const(Const::String(s.to_string())) }
 #[cfg(test)]
 pub fn arr(xs: &[Expr]) -> Expr { Expr::Arr(xs.to_vec()) }

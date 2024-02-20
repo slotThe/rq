@@ -1,5 +1,8 @@
 use std::{collections::BTreeMap, fmt::{self, Display}};
 
+/// Ordered floats—scandalous!
+pub mod ord_f64;
+
 /// Pretty print an object of pretty-printable things.
 pub fn fmt_object<T: Display>(
   hm: &BTreeMap<T, T>,

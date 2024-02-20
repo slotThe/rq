@@ -290,7 +290,7 @@ Additionally, the following keywords are available:
   - Debugging: `:d`
 
         λ> :d \x -> x 4 "flurble"
-        Lam("x", App(App(Var("x"), Const(Num(OrderedFloat(4.0)))), Const(String("flurble"))))
+        Lam("x", App(App(Var("x"), Const(Num(OrdF64(4.0)))), Const(String("flurble"))))
 
     + Prettier, yet more verbose, output: `:dp`
 

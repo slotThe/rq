@@ -13,8 +13,6 @@
 
 use std::{collections::BTreeMap, error::Error, fmt::Display};
 
-use ordered_float::OrderedFloat;
-
 use self::stdlib::Builtin;
 use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, if_then_else, λ, Const, Expr}, r#type::checker::TCExpr, util::style};
 
@@ -140,8 +138,8 @@ impl Sem {
       (SBuiltin(_), _) => Ok(self.app(x)),
       (App(box SBuiltin(BConst), this), _) => Ok(*this.clone()),
       // Get
-      (App(box SBuiltin(Get), box SConst(Const::Num(OrderedFloat(i)))), Arr(xs)) => xs
-        .get(*i as usize)
+      (App(box SBuiltin(Get), box SConst(Const::Num(i))), Arr(xs)) => xs
+        .get(**i as usize)
         .ok_or(EvalError::WrongIndex(i.to_string(), x.reify()?))
         .cloned(),
       (App(box SBuiltin(Get), box SConst(Const::String(s))), Obj(ob)) => ob

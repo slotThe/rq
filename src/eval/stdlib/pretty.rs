@@ -5,7 +5,8 @@ use crate::util::style;
 pub struct Blocks(Vec<Block>);
 
 /// A unit of text that should be rendered in some way, and not be broken up
-/// across lines. The second part is relevant when calling [`wrap`].
+/// across lines. The second part is relevant when calling functions like
+/// [`wrap`](Blocks::wrap).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Block {
   Plain(String),

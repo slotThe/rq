@@ -24,7 +24,7 @@ impl Expr {
       Expr::Const(Const::String(s)) => Value::String(s.to_string()),
       Expr::Const(Const::Null) => Value::Null,
       Expr::Const(Const::Num(n)) => {
-        let n = n.into_inner();
+        let n = n.unpack();
         Value::Number(if n.fract() == 0.0 {
           (n as i64).into()
         } else {
