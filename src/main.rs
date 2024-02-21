@@ -15,7 +15,7 @@ use anyhow::Result;
 use eval::stdlib::STDLIB_HELP;
 use expr::{parser::parse_main, Expr};
 
-use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{app, json::json_to_expr}};
+use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::app};
 
 fn main() -> Result<()> {
   let arg = env::args().nth(1);
@@ -97,13 +97,12 @@ fn oneshot() -> Result<()> {
   let mut input = String::new();
   io::stdin().read_to_string(&mut input)?;
   if let Some(expr) = parse_main(&env::args().collect::<Vec<_>>()[1]) {
-    println!(
-      "{}",
-      app(expr, json_to_expr(&serde_json::from_str(&input)?))
-        .check(&STDLIB_TYPES)?
-        .eval(&STDLIB_CTX)?
-        .to_json()
-    )
+    if let Some(json) = parse_main(&input) {
+      println!(
+        "{}",
+        app(expr, json).check(&STDLIB_TYPES)?.eval(&STDLIB_CTX)?
+      )
+    }
   }
   Ok(())
 }

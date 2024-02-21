@@ -4,7 +4,6 @@ use self::de_bruijn::DBVar;
 use crate::{eval::stdlib::Builtin, util::{fmt_array, fmt_object, ord_f64::OrdF64}};
 
 pub mod de_bruijn;
-pub mod json;
 pub mod parser;
 #[cfg(test)]
 pub mod test;
