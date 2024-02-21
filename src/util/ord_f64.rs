@@ -10,10 +10,6 @@ use std::{cmp::Ordering, fmt::{self, Display}, ops::{Add, Deref, Div, Mul, Sub},
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OrdF64(f64);
 
-impl OrdF64 {
-  pub fn unpack(&self) -> f64 { self.0 }
-}
-
 impl Eq for OrdF64 {}
 
 impl Display for OrdF64 {
