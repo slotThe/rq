@@ -1,17 +1,17 @@
-use std::{collections::BTreeMap, fmt::{self, Display}};
+use std::fmt::{self, Display};
 
 /// Ordered floats—scandalous!
 pub mod ord_f64;
 
 /// Pretty print an object of pretty-printable things.
-pub fn fmt_object<T: Display>(
-  hm: &BTreeMap<T, T>,
+pub fn fmt_object<S: Display, T: Display>(
+  ob: impl IntoIterator<Item = (S, T)>,
   f: &mut fmt::Formatter,
 ) -> fmt::Result {
   write!(
     f,
-    "{{ {} }}",
-    hm.iter()
+    "{{{}}}",
+    ob.into_iter()
       .map(|(k, v)| k.to_string() + ": " + &v.to_string())
       .intersperse(", ".to_string())
       .collect::<String>(),
@@ -22,7 +22,7 @@ pub fn fmt_object<T: Display>(
 pub fn fmt_array<T: Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
   write!(
     f,
-    "[ {} ]",
+    "[{}]",
     xs.iter()
       .map(|x| x.to_string())
       .intersperse(", ".to_string())
