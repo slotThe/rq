@@ -1,4 +1,4 @@
-use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity, error::Error, fmt::Display};
+use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity, error::Error, fmt::Display, thread};
 
 use super::{arr, TVar, Type};
 use crate::{expr::{de_bruijn::{DBEnv, DBVar}, var, Expr}, util::style};
@@ -24,9 +24,18 @@ impl Expr {
       tvar: TVar(0),
     };
     let (raw_type, mut constrs) = gather_constraints(&mut state, self)?;
-    let mut typ = raw_type.refine(&constrs.unify()?);
-    typ.normalise_mut();
-    Ok(typ)
+    // I'm so sorry.
+    thread::Builder::new()
+      .name("type checker".into())
+      .stack_size(32 * 1024 * 1024) // mb
+      .spawn(move || {
+        let mut typ = raw_type.refine(&constrs.unify()?);
+        typ.normalise_mut();
+        Ok(typ)
+      })
+      .unwrap()
+      .join()
+      .unwrap()
   }
 }
 
@@ -169,7 +178,7 @@ impl Constraints {
 
   /// Substitute the given type variable by its refined type.
   fn substitute(
-    &mut self,  // Constraints possibly containing the type variable
+    &self,      // Constraints possibly containing the type variable
     var: TVar,  // The type variable to refine
     typ: &Type, // Its refined type
     expr: Expr, // The expression in which the substitution takes place—for context.
