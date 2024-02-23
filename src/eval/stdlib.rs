@@ -27,29 +27,6 @@ pub enum Builtin {
   Geq,
 }
 
-impl Builtin {
-  pub fn show(&self) -> &'static str {
-    match self {
-      Builtin::Id => "id",
-      Builtin::BConst => "const",
-      Builtin::Get => "get",
-      Builtin::Map => "map",
-      Builtin::Filter => "filter",
-      Builtin::Foldl => "foldl",
-      Builtin::Add => "+",
-      Builtin::Sub => "-",
-      Builtin::Mul => "*",
-      Builtin::Div => "÷",
-      Builtin::Eq => "=",
-      Builtin::Neq => "≠",
-      Builtin::Le => "<",
-      Builtin::Leq => "≤",
-      Builtin::Ge => ">",
-      Builtin::Geq => "≥",
-    }
-  }
-}
-
 impl Display for Builtin {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{}", self.show()) }
 }
@@ -61,15 +38,6 @@ pub struct StdFun {
   builtin:   Builtin,
   expr_type: Type,
   help:      Blocks,
-}
-
-impl Builtin {
-  pub fn names(&self) -> Vec<&'static str> {
-    let entry = STDLIB.get(self).unwrap();
-    let mut res = vec![entry.name];
-    res.extend_from_slice(&entry.aliases);
-    res
-  }
 }
 
 macro_rules! mk_fun {
