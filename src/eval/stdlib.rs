@@ -40,6 +40,15 @@ pub struct StdFun {
   help:      Blocks,
 }
 
+impl Builtin {
+  pub fn names(&self) -> Vec<&'static str> {
+    let entry = STDLIB.get(self).unwrap();
+    let mut res = vec![entry.name];
+    res.extend_from_slice(&entry.aliases);
+    res
+  }
+}
+
 macro_rules! mk_fun {
   // No aliases
   ($name:expr, $type:expr, $help:expr $(,)?) => {
