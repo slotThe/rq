@@ -1,12 +1,23 @@
 use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity, error::Error, fmt::Display, thread};
 
 use super::{arr, TVar, Type};
-use crate::{expr::{de_bruijn::{DBEnv, DBVar}, var, Expr}, util::style};
+use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, var, Expr}, util::style};
 
 /// A type-checked expression.
 #[derive(Debug)]
 pub struct TCExpr {
   pub expr: Expr,
+}
+
+impl TCExpr {
+  /// Apply an expression to a type-checked expression. Assumes that the added
+  /// expression is well-formed—i.e., type-checks. This is essentially an
+  /// optimisation, as type-checking a large JSON chunk may take a while.
+  pub fn apply(self, json: Expr) -> TCExpr {
+    TCExpr {
+      expr: app(self.expr, json),
+    }
+  }
 }
 
 impl Expr {
@@ -24,18 +35,9 @@ impl Expr {
       tvar: TVar(0),
     };
     let (raw_type, mut constrs) = gather_constraints(&mut state, self)?;
-    // I'm so sorry.
-    thread::Builder::new()
-      .name("type checker".into())
-      .stack_size(32 * 1024 * 1024) // mb
-      .spawn(move || {
-        let mut typ = raw_type.refine(&constrs.unify()?);
-        typ.normalise_mut();
-        Ok(typ)
-      })
-      .unwrap()
-      .join()
-      .unwrap()
+    let mut typ = raw_type.refine(&constrs.unify()?);
+    typ.normalise_mut();
+    Ok(typ)
   }
 }
 

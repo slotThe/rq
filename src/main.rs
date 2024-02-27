@@ -100,7 +100,7 @@ fn oneshot() -> Result<()> {
     if let Some(json) = parse_main(&input) {
       println!(
         "{}",
-        app(expr, json).check(&STDLIB_TYPES)?.eval(&STDLIB_CTX)?
+        expr.check(&STDLIB_TYPES)?.apply(json).eval(&STDLIB_CTX)?
       )
     }
   }
