@@ -116,7 +116,8 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       let p_kv = (p_varlike.or(p_str).map(|s| Expr::Const(Const::String(s))))
         .then_ignore(just(':').padded())
         .or(p_expr.clone().then_ignore(just(':').padded()))
-        .then(p_expr.clone());
+        .then(p_expr.clone())
+        .boxed();
       just('{')
         .padded()
         .ignore_then(
@@ -190,7 +191,8 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
             p_expr.clone().padded(),
           ))
           .padded()
-          .repeated(),
+          .repeated()
+          .boxed(),
         )
         .foldl(app);
       go.clone()
