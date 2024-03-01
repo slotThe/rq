@@ -112,6 +112,14 @@ $ cargo metadata --format-version=1 | rq '.packages | map .name'
         { if true then "this" else "thus": 3, that: null }
           ≡  { "this": 3, "that": null }
 
+- Expressions can be type-annotated with `::` or `∷`, though this is usually not necessary.
+
+        λ> 1 + 2 :: JSON
+        3
+
+        λ> :e 1 + 2 + (3 ∷ JSON)
+        + (+ 1 2) (3 ∷ JSON)
+
 ### Syntactic sugar
 
 - The `get` function—with which one can index arrays and objects—can be abbreviated by `.`:

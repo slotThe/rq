@@ -5,7 +5,7 @@ pub mod checker;
 pub mod test;
 
 /// The type of a type!
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Type {
   /// A type variable.

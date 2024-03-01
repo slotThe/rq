@@ -9,7 +9,7 @@ use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
 use super::{app, de_bruijn::DBVar, expr_str, if_then_else, num, var, λ, Const};
-use crate::{eval::stdlib::Builtin, Expr};
+use crate::{eval::stdlib::Builtin, r#type::{self, TVar, Type}, Expr};
 
 // This is an absolutely unreadable mess, and the compulsively imperative
 // nature of chumsky really makes my head spin a bit. Plus, compile times went
@@ -142,7 +142,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
       haskell_head.or(rust_head)
         .padded()
         .then(p_expr.clone())
-        .map(|(hs, b)| hs.iter().rev().fold(b, |acc, h| λ(h.as_str(), acc)))
+        .foldr(|head, acc| λ(head.as_str(), acc))
         .labelled("lambda")
     };
 
@@ -311,8 +311,45 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
     .foldl(apply_op).map(|x| x.unwrap())
     .boxed();
 
-    let parse = p_ops_comp.clone()
-      .then(just('|').padded().ignore_then(p_ops_comp.clone()).repeated())
+    // Parse a type.
+    let p_type = recursive(|p_type| {
+      let inner = choice((
+        text::int(10).from_str().unwrapped().map(|n| Type::Var(TVar(n))),
+        text::ident().try_map( // JSON
+          move |s: <char as chumsky::text::Character>::Collection, span| {
+            if "json" == &s.as_str().to_lowercase() {
+              Ok(Type::JSON)
+            } else {
+              Err(Simple::expected_input_found(span, None, None))
+            }
+          },
+        ),
+        p_type.clone().padded().delimited_by(just('('),just(')'))
+      ));
+      inner.clone()
+        .then_ignore(just("->").or(just("→")).padded())
+        .repeated()
+        .then(inner.clone())
+        .foldr(r#type::arr)
+    });
+
+    // Parse an expression with a possible type annotation: expr ∷ Type
+    let p_ann = {
+      let inner = p_ops_comp.clone()
+        .then(just("::").or(just("∷")).padded().ignore_then(p_type.clone()).or_not())
+        .map(|(e, t)| match t {
+          None => e,
+          Some(t) => Expr::Ann(Box::new(e), t),
+        });
+      choice((
+        inner.clone().delimited_by(just('('),just(')')),
+        inner.clone(),
+        p_ops_comp.clone()
+      ))
+    };
+
+    let parse = p_ann.clone()
+      .then(just('|').padded().ignore_then(p_ann.clone()).repeated())
       .foldl(|a, b| λ("x", app(b.clone(), app(a, var("x")))));
     parse.clone().delimited_by(just('('), just(')')).or(parse.clone())
   });

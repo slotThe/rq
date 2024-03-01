@@ -15,7 +15,7 @@ use anyhow::Result;
 use eval::stdlib::STDLIB_HELP;
 use expr::{parser::parse_main, Expr};
 
-use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::app};
+use crate::eval::stdlib::{STDLIB_CTX, STDLIB_TYPES};
 
 fn main() -> Result<()> {
   let arg = env::args().nth(1);

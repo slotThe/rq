@@ -1,4 +1,4 @@
-use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity, error::Error, fmt::Display, thread};
+use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity, error::Error, fmt::Display};
 
 use super::{arr, TVar, Type};
 use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, var, Expr}, util::style};
@@ -229,6 +229,11 @@ fn gather_constraints(
     Expr::Var(v) => match state.ctx.lookup_var(v) {
       None => type_error!(VariableNotInScope, v),
       Some(t) => Ok((t.clone(), Constraints::new())),
+    },
+    Expr::Ann(e, t) => {
+      let (type_e, mut con) = gather_constraints(state, e)?;
+      con.0.push((t.clone(), type_e, *e.clone()));
+      Ok((t.clone(), con))
     },
     Expr::Arr(exprs) => Ok((
       Type::JSON,

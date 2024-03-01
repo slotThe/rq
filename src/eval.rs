@@ -117,6 +117,10 @@ impl Expr {
           Box::new(e.to_sem(env)?),
         )),
       },
+      // Let's hope that type-checking was successful! XXX: Perhaps it is
+      // better overall to have a desugared expression type in which there
+      // simply is no annotation variant.
+      Expr::Ann(e, _) => e.to_sem(env),
     }
   }
 }

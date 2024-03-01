@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, fmt::{self, Display}};
 
 use self::de_bruijn::DBVar;
-use crate::{eval::stdlib::Builtin, util::{fmt_array, fmt_object, ord_f64::OrdF64}};
+use crate::{eval::stdlib::Builtin, r#type::Type, util::{fmt_array, fmt_object, ord_f64::OrdF64}};
 
 pub mod de_bruijn;
 pub mod parser;
@@ -39,16 +39,19 @@ pub enum Expr {
   Obj(BTreeMap<Expr, Expr>),
   IfThenElse(Box<Expr>, Box<Expr>, Box<Expr>),
   Builtin(Builtin),
+  Ann(Box<Expr>, Type),
 }
 
 impl Display for Expr {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     fn try_parens(expr: &Expr) -> String {
-      match expr {
-        Expr::Lam(_, _) | Expr::App(_, _) | Expr::IfThenElse(_, _, _) => {
-          format!("({expr})")
-        },
-        _ => format!("{expr}"),
+      if matches!(
+        expr,
+        Expr::Lam(_, _) | Expr::App(_, _) | Expr::IfThenElse(_, _, _) | Expr::Ann(_, _)
+      ) {
+        format!("({expr})")
+      } else {
+        format!("{expr}")
       }
     }
     match self {
@@ -70,6 +73,7 @@ impl Display for Expr {
       Expr::Obj(hm) => fmt_object(hm, f),
       Expr::IfThenElse(i, t, e) => write!(f, "if {i} then {t} else {e}"),
       Expr::Builtin(b) => write!(f, "{b}"),
+      Expr::Ann(e, t) => write!(f, "{e} ∷ {t}"),
     }
   }
 }
@@ -91,3 +95,5 @@ pub fn obj(xs: &[(&str, Expr)]) -> Expr {
 }
 #[cfg(test)]
 pub fn var_ix(v: &str, ix: isize) -> Expr { Expr::Var(DBVar::from_pair(v, ix)) }
+#[cfg(test)]
+pub fn ann(e: Expr, t: Type) -> Expr { Expr::Ann(Box::new(e), t) }

@@ -1,6 +1,6 @@
 #[rustfmt::skip]
 mod parser {
-  use crate::expr::{app, arr, expr_str, if_then_else, λ, num, obj, parser::parse, var, var_ix, Builtin::*, Const::*, Expr::*};
+  use crate::{expr::{ann, app, arr, expr_str, if_then_else, num, obj, parser::parse, var, var_ix, λ, Builtin::*, Const::*, Expr::*}, r#type::{self, Type}};
 
   macro_rules! parse_eq {
     ($left:expr, $right:expr $(,)?) => {
@@ -101,14 +101,18 @@ mod parser {
 
   #[test]
   fn bin_ops_and_precedence() {
-    // (1 + 2) + 3
-    parse_eq!("1 + 2 + 3", app(app(Builtin(Add), app(app(Builtin(Add), num(1)), num(2))), num(3)));
-    // 1 + (2 * 3)
-    parse_eq!("1 + 2 * 3", app(app(Builtin(Add), num(1)), app(app(Builtin(Mul), num(2)), num(3))));
-    // λx. (1 * get 4 x) + (5 = 5)
-    parse_eq!("\\x -> 1 * get 4 x + (  5   =  5  )", λ("x", app(app(Builtin(Add), app(app(Builtin(Mul), num(1)), app(app(var("get"), num(4)), var("x")))), app(app(Builtin(Eq), num(5)), num(5)))));
-    // (1 < (4 + 5)) = 5
-    parse_eq!("1 < 4 + 5 = 5", app(app(Builtin(Eq), app(app(Builtin(Le), num(1)), app(app(Builtin(Add), num(4)), num(5)))), num(5)))
+    parse_eq!("1 + 2 + 3",
+              app(app(Builtin(Add), app(app(Builtin(Add), num(1)), num(2))), num(3)),
+              "(1 + 2) + 3");
+    parse_eq!("1 + 2 * 3",
+              app(app(Builtin(Add), num(1)), app(app(Builtin(Mul), num(2)), num(3))),
+              "1 + (2 * 3)");
+    parse_eq!("\\x -> 1 * get 4 x + (  5   =  5  )",
+              λ("x", app(app(Builtin(Add), app(app(Builtin(Mul), num(1)), app(app(var("get"), num(4)), var("x")))), app(app(Builtin(Eq), num(5)), num(5)))),
+              "λx. (1 * get 4 x) + (5 = 5)");
+    parse_eq!("1 < 4 + 5 = 5",
+              app(app(Builtin(Eq), app(app(Builtin(Le), num(1)), app(app(Builtin(Add), num(4)), num(5)))), num(5)),
+              "(1 < (4 + 5)) = 5");
   }
 
   #[test]
@@ -127,5 +131,19 @@ mod parser {
     parse_eq!("\\x -> \\x -> x@1", λ("x", λ("x", var_ix("x", 1))));
     parse_eq!("\\x -> \\x -> x@0", λ("x", λ("x", var("x"))));
     parse_eq!("\\x -> \\x -> x", λ("x", λ("x", var("x"))));
+  }
+
+  #[test]
+  fn annotations() {
+    use Type::*;
+    parse_eq!("1 :: JSON -> JSON -> JSON",
+              ann(num(1), r#type::arr(JSON, r#type::arr(JSON, JSON))),
+              "right associative by default");
+    parse_eq!("1 :: (JSON -> JSON) -> JSON", ann(num(1), r#type::arr(r#type::arr(JSON, JSON), JSON)));
+    parse_eq!("1 :: ((JSON -> JSON) -> JSON) -> JSON", ann(num(1), r#type::arr(r#type::arr(r#type::arr(JSON, JSON), JSON), JSON)));
+    parse_eq!("1 :: JSON -> JSON -> JSON -> JSON", ann(num(1), r#type::arr(JSON, r#type::arr(JSON, r#type::arr(JSON, JSON)))));
+    parse_eq!("1 :: JSON -> (JSON -> JSON) -> JSON", ann(num(1), r#type::arr(JSON, r#type::arr(r#type::arr(JSON, JSON), JSON))));
+    parse_eq!("1 ∷ ((JSON -> JSON) -> (JSON -> JSON))", ann(num(1), r#type::arr(r#type::arr(JSON, JSON), r#type::arr(JSON, JSON))));
+    parse_eq!("1 ∷ JSON -> JSON -> (JSON -> JSON)", ann(num(1), r#type::arr(JSON, r#type::arr(JSON, r#type::arr(JSON, JSON)))));
   }
 }
