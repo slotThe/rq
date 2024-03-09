@@ -213,7 +213,8 @@ $ cargo metadata --format-version=1 | rq '.packages | map .name'
 - Misc
 
   ``` agda
-  id    : JSON → JSON,
+  -- The identity function.
+  id    : ∀a. a → a,
 
   -- Return the first argument
   const : JSON → JSON → JSON

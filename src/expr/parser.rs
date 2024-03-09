@@ -9,7 +9,7 @@ use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 
 use super::{app, de_bruijn::DBVar, expr_str, if_then_else, num, var, λ, Const};
-use crate::{eval::stdlib::Builtin, r#type::{self, TVar, Type}, Expr};
+use crate::{eval::stdlib::Builtin, r#type::{TypVar, Type}, Expr};
 
 // This is an absolutely unreadable mess, and the compulsively imperative
 // nature of chumsky really makes my head spin a bit. Plus, compile times went
@@ -314,7 +314,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
     // Parse a type.
     let p_type = recursive(|p_type| {
       let inner = choice((
-        text::int(10).from_str().unwrapped().map(|n| Type::Var(TVar(n))),
+        text::int(10).from_str().unwrapped().map(|n| Type::Var(TypVar(n))),
         text::ident().try_map( // JSON
           move |s: <char as chumsky::text::Character>::Collection, span| {
             if "json" == &s.as_str().to_lowercase() {
@@ -330,7 +330,7 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
         .then_ignore(just("->").or(just("→")).padded())
         .repeated()
         .then(inner.clone())
-        .foldr(r#type::arr)
+        .foldr(Type::arr)
     });
 
     // Parse an expression with a possible type annotation: expr ∷ Type

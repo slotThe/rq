@@ -7,13 +7,13 @@ mod evaluator {
   macro_rules! eval_eq {
     ($left:expr, $right:expr $(,)?) => {
       assert_eq!(
-        &parse($left).unwrap().check(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &parse($left).unwrap().to_tcexpr(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
         &Ok($right)
       )
     };
     ($left:expr, $right:expr, $($arg:tt)+) => {
       assert_eq!(
-        &parse($left).unwrap().check(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &parse($left).unwrap().to_tcexpr(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
         &Ok($right),
         $($arg)+
       )
@@ -23,7 +23,7 @@ mod evaluator {
   macro_rules! eval_err {
     ($left:expr) => {
       assert_matches!(
-        &parse($left).unwrap().check(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &parse($left).unwrap().to_tcexpr(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
         &Err(_)
       )
     };

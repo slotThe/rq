@@ -1,6 +1,6 @@
 #[rustfmt::skip]
 mod parser {
-  use crate::{expr::{ann, app, arr, expr_str, if_then_else, num, obj, parser::parse, var, var_ix, λ, Builtin::*, Const::*, Expr::*}, r#type::{self, Type}};
+  use crate::{expr::{ann, app, arr, expr_str, if_then_else, num, obj, parser::parse, var, var_ix, λ, Builtin::*, Const::*, Expr::*}, r#type::Type};
 
   macro_rules! parse_eq {
     ($left:expr, $right:expr $(,)?) => {
@@ -137,13 +137,13 @@ mod parser {
   fn annotations() {
     use Type::*;
     parse_eq!("1 :: JSON -> JSON -> JSON",
-              ann(num(1), r#type::arr(JSON, r#type::arr(JSON, JSON))),
+              ann(num(1), Type::arr(JSON, Type::arr(JSON, JSON))),
               "right associative by default");
-    parse_eq!("1 :: (JSON -> JSON) -> JSON", ann(num(1), r#type::arr(r#type::arr(JSON, JSON), JSON)));
-    parse_eq!("1 :: ((JSON -> JSON) -> JSON) -> JSON", ann(num(1), r#type::arr(r#type::arr(r#type::arr(JSON, JSON), JSON), JSON)));
-    parse_eq!("1 :: JSON -> JSON -> JSON -> JSON", ann(num(1), r#type::arr(JSON, r#type::arr(JSON, r#type::arr(JSON, JSON)))));
-    parse_eq!("1 :: JSON -> (JSON -> JSON) -> JSON", ann(num(1), r#type::arr(JSON, r#type::arr(r#type::arr(JSON, JSON), JSON))));
-    parse_eq!("1 ∷ ((JSON -> JSON) -> (JSON -> JSON))", ann(num(1), r#type::arr(r#type::arr(JSON, JSON), r#type::arr(JSON, JSON))));
-    parse_eq!("1 ∷ JSON -> JSON -> (JSON -> JSON)", ann(num(1), r#type::arr(JSON, r#type::arr(JSON, r#type::arr(JSON, JSON)))));
+    parse_eq!("1 :: (JSON -> JSON) -> JSON", ann(num(1), Type::arr(Type::arr(JSON, JSON), JSON)));
+    parse_eq!("1 :: ((JSON -> JSON) -> JSON) -> JSON", ann(num(1), Type::arr(Type::arr(Type::arr(JSON, JSON), JSON), JSON)));
+    parse_eq!("1 :: JSON -> JSON -> JSON -> JSON", ann(num(1), Type::arr(JSON, Type::arr(JSON, Type::arr(JSON, JSON)))));
+    parse_eq!("1 :: JSON -> (JSON -> JSON) -> JSON", ann(num(1), Type::arr(JSON, Type::arr(Type::arr(JSON, JSON), JSON))));
+    parse_eq!("1 ∷ ((JSON -> JSON) -> (JSON -> JSON))", ann(num(1), Type::arr(Type::arr(JSON, JSON), Type::arr(JSON, JSON))));
+    parse_eq!("1 ∷ JSON -> JSON -> (JSON -> JSON)", ann(num(1), Type::arr(JSON, Type::arr(JSON, Type::arr(JSON, JSON)))));
   }
 }

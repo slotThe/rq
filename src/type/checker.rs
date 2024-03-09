@@ -1,7 +1,17 @@
-use std::{collections::{BTreeMap, BTreeSet, HashMap}, convert::identity, error::Error, fmt::Display};
+//! Bidirectional type checking:
+//!
+//! - Jana Dunfield and Neelakantan R. Krishnaswami. 2013.
+//!   "Complete and easy bidirectional typechecking for higher-rank polymorphism."
+//!   In Proc. of the 18th ACM SIGPLAN int. conf. on Functional programming (ICFP '13).
+//!   Association for Computing Machinery, New York, NY, USA, 429–442.
+//!   <https://doi.org/10.1145/2500365.2500582>
+//!
+//! The article is readily available [on the arXiv](https://arxiv.org/abs/1306.6032).
 
-use super::{arr, TVar, Type};
-use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, var, Expr}, util::style};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+
+use super::{context::{Item, State}, error::TypeCheckError, Monotype, TypVar, Type};
+use crate::expr::{self, app, Expr};
 
 /// A type-checked expression.
 #[derive(Debug)]
@@ -21,44 +31,54 @@ impl TCExpr {
 }
 
 impl Expr {
-  /// Verify that the given expression has a valid type.
-  pub fn check(&self, ctx: &BTreeMap<String, Type>) -> Result<TCExpr, TypeCheckError> {
-    self.infer(ctx)?;
-    Ok(TCExpr { expr: self.clone() })
+  /// Type check an expression.
+  pub fn type_check(
+    &self,
+    stdlib: &BTreeMap<String, Type>,
+  ) -> Result<Type, TypeCheckError> {
+    let state = State::new(stdlib.clone());
+    let (state, mut typ) = self.synth(state)?;
+    typ.finish_mut(&state.ctx);
+    Ok(typ)
   }
 
-  /// Infer the type of an expression. Returns the desugared expression with
-  /// its associated type.
-  pub fn infer(&self, ctx: &BTreeMap<String, Type>) -> Result<Type, TypeCheckError> {
-    let mut state = State {
-      ctx:  DBEnv::from_iter_with(ctx.clone(), identity),
-      tvar: TVar(0),
-    };
-    let (raw_type, mut constrs) = gather_constraints(&mut state, self)?;
-    let mut typ = raw_type.refine(&constrs.unify()?);
-    typ.normalise_mut();
-    Ok(typ)
+  /// Construct a [TCExpr] out of an [Expr].
+  pub fn to_tcexpr(
+    &self,
+    ctx: &BTreeMap<String, Type>,
+  ) -> Result<TCExpr, TypeCheckError> {
+    self.type_check(ctx)?;
+    Ok(TCExpr { expr: self.clone() })
   }
 }
 
 impl Type {
-  /// Normalise all type variables; i.e., make them start at 0.
-  fn normalise_mut(&mut self) {
-    fn enum_tvars(tvars: &mut BTreeSet<TVar>, typ: &Type) {
+  /// Clean up after type checking: normalise all type variables (make them
+  /// start at 0) and replace existential (unsolved) type variables with
+  /// universal quantification.
+  fn finish_mut(&mut self, ctx: &[Item]) {
+    // Enumerate all type variables
+    fn enum_tvars(tvars: &mut BTreeSet<TypVar>, typ: &Type) {
       match typ {
         Type::JSON => {},
-        Type::Var(tvar) => {
-          tvars.insert(*tvar);
+        Type::Var(v) | Type::Exist(v) => {
+          tvars.insert(*v);
         },
         Type::Arr(t1, t2) => {
           enum_tvars(tvars, t1);
           enum_tvars(tvars, t2);
         },
+        Type::Forall(α, t) => {
+          tvars.insert(*α);
+          enum_tvars(tvars, t);
+        },
       }
     }
-    fn downscale(tvars: &HashMap<TVar, usize>, typ: &mut Type) {
+
+    // Scale all type variables down, so they start at 0.
+    fn downscale(tvars: &HashMap<TypVar, usize>, typ: &mut Type) {
       match typ {
-        Type::Var(tvar) => {
+        Type::Var(tvar) | Type::Exist(tvar) => {
           tvar.0 = *tvars.get(tvar).unwrap();
         },
         Type::JSON => {},
@@ -66,224 +86,373 @@ impl Type {
           downscale(tvars, t1);
           downscale(tvars, t2);
         },
+        Type::Forall(α, t) => {
+          α.0 = *tvars.get(α).unwrap();
+          downscale(tvars, t);
+        },
       }
     }
+
+    // Eschew existential type variables and replace them with universal
+    // quantification. This looks nicer.
+    fn forallise(typ: Type, rule: &Item) -> Type {
+      match rule {
+        Item::Unsolved(α̂) if α̂.unsolved_in(&typ) => {
+          Type::forall(*α̂, typ.subst(Type::Var(*α̂), *α̂))
+        },
+        _ => typ,
+      }
+    }
+
+    *self = ctx.iter().rfold(self.apply_ctx(ctx), forallise);
     let mut tvars = BTreeSet::new();
     enum_tvars(&mut tvars, self);
     downscale(&tvars.into_iter().zip(0..).collect(), self);
   }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum TypeCheckError {
-  VariableNotInScope(DBVar),
-  UnificationError(Type, Type, Expr),
-  OccursCheck(Type, Type, Expr),
-}
-
-impl Error for TypeCheckError {}
-
-impl Display for TypeCheckError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      TypeCheckError::VariableNotInScope(v) => write!(f, "Variable not in scope: {v}"),
-      TypeCheckError::UnificationError(t1, t2, e) => write!(
-        f,
-        "Can't unify {} with {} in expression {}",
-        style(t1),
-        style(t2),
-        style(e)
-      ),
-      TypeCheckError::OccursCheck(t1, t2, e) => write!(
-        f,
-        "Occurs check: can't construct infinite type {} ≡ {} in expression {}",
-        style(t1),
-        style(t2),
-        style(e)
-      ),
-    }
-  }
-}
-
-/// Normalise a type checking error and emit it.
-/// type_error: TCE::Ident → Type → Type → Result<Type, TCE>
-macro_rules! type_error {
-  (VariableNotInScope, $v:expr $(,)?) => {
-    Err(TypeCheckError::VariableNotInScope($v.clone()))
-  };
-  ($error_typ:ident, $t1:expr, $t2:expr, $e:expr $(,)?) => {{
-    let mut t1n = $t1.clone();
-    t1n.normalise_mut();
-    let mut t2n = $t2.clone();
-    t2n.normalise_mut();
-    Err(TypeCheckError::$error_typ(t1n, t2n, $e))
-  }};
-}
-
-/// A single substitution comprises a type variable and its refined type.
-type Substitutions = HashMap<TVar, Type>;
-
 impl Type {
-  /// Refine a type variable according to a context.
-  fn refine(
-    &self,                // Type to refine according to that context.
-    subs: &Substitutions, // Substitutions; i.e., possible refinements.
-  ) -> Type {
+  ///                   A.well_formed_under(Γ)  ≡  Γ ⊢ A
+  ///
+  /// Under context Γ, type A is well-formed.
+  fn well_formed_under(&self, ctx: &[Item]) -> Result<(), TypeCheckError> {
     match self {
-      Type::JSON => self.clone(),
-      Type::Var(tv) => subs.get(tv).unwrap_or(self).clone(),
-      Type::Arr(t1, t2) => arr(t1.refine(subs), t2.refine(subs)),
-    }
-  }
-}
-
-/// An association list of type constraints. An element (x, y, e) represents a
-/// constraint of the form x ≡ y in the expression e. The expression is merely
-/// used to improve error messages, and does not weigh on the constraints in
-/// any way.
-#[derive(Debug, Clone)]
-struct Constraints(Vec<(Type, Type, Expr)>);
-
-impl FromIterator<(Type, Type, Expr)> for Constraints {
-  fn from_iter<T: IntoIterator<Item = (Type, Type, Expr)>>(iter: T) -> Self {
-    Constraints(iter.into_iter().collect::<Vec<_>>())
-  }
-}
-
-impl Constraints {
-  /// Create a new constraint mapping.
-  fn new() -> Constraints { Constraints(Vec::new()) }
-
-  /// Unify the given constraints and produce a refinement mapping.
-  fn unify(&mut self) -> Result<Substitutions, TypeCheckError> {
-    match self.0.pop() {
-      None => Ok(HashMap::new()),
-      Some((t1, t2, e)) => {
-        if t1 == t2 {
-          self.unify()
+      // UnitWF
+      Type::JSON => Ok(()),
+      // UvarWF
+      Type::Var(α) => {
+        if ctx.contains(&Item::Var(*α)) {
+          Ok(())
         } else {
-          match (t1.clone(), t2.clone()) {
-            (Type::Var(v), _) => self.substitute(v, &t2, e), // refine
-            (_, Type::Var(v)) => self.substitute(v, &t1, e), // refine
-            (Type::Arr(t1, t2), Type::Arr(t3, t4)) => {
-              self
-                .0
-                .extend_from_slice(&[(*t1, *t3, e.clone()), (*t2, *t4, e.clone())]); // add new constraints
-              self.unify()
-            },
-            _ => type_error!(UnificationError, t1, t2, e),
-          }
+          Err(TypeCheckError::TypeVariableNotInScope(*α))
         }
+      },
+      // EvarWF and SolvedEvarWF
+      Type::Exist(α̂) => {
+        if ctx.iter().any(|it| match it {
+          Item::Unsolved(β̂) => α̂ == β̂,
+          Item::Solved(β̂, _) => α̂ == β̂,
+          _ => false,
+        }) {
+          Ok(())
+        } else {
+          Err(TypeCheckError::MalformedType(self.clone()))
+        }
+      },
+      // ForallWF
+      Type::Forall(α, t) => t.well_formed_under(&[ctx, &[Item::Var(*α)]].concat()),
+      // ArrowWF
+      Type::Arr(t1, t2) => {
+        t1.well_formed_under(ctx)?;
+        t2.well_formed_under(ctx)
       },
     }
   }
 
-  /// Substitute the given type variable by its refined type.
-  fn substitute(
-    &self,      // Constraints possibly containing the type variable
-    var: TVar,  // The type variable to refine
-    typ: &Type, // Its refined type
-    expr: Expr, // The expression in which the substitution takes place—for context.
-  ) -> Result<Substitutions, TypeCheckError> {
-    if var.occurs_in(typ) {
-      type_error!(OccursCheck, &Type::Var(var), typ, expr)
-    } else {
-      let refinement: &Substitutions = &HashMap::from([(var, typ.clone())]);
-      let mut unified: Substitutions = self
-        .0
-        .iter()
-        .map(|(ty1, ty2, e)| (ty1.refine(refinement), ty2.refine(refinement), e.clone()))
-        .collect::<Constraints>()
-        .unify()?;
-      unified.entry(var).or_insert_with(|| typ.clone());
-      Ok(unified)
+  ///                   A.subtype_of(Γ, B)  ≡  Γ ⊢ A <: B ⊣ Δ
+  ///
+  /// Under input context Γ, type A is a subtype of B, with output context Δ.
+  /// Figure 9.
+  fn subtype_of(&self, mut state: State, b: &Type) -> Result<State, TypeCheckError> {
+    // println!("subtype; ctx: {:?}  a: {:?}  b: {:?}", state.ctx, self, b);
+    match (self, b) {
+      // <:Var
+      (Type::Var(α), Type::Var(β)) if α == β => {
+        self.well_formed_under(&state.ctx)?;
+        Ok(state)
+      },
+      // <:JSON ≡ <:Unit
+      (Type::JSON, Type::JSON) => Ok(state),
+      // <:→
+      (Type::Arr(a1, a2), Type::Arr(b1, b2)) => {
+        let θ = b1.subtype_of(state, a1)?;
+        // θ ⊢ [θ]A₂ <: [θ]B₂ ⊣ Δ
+        a2.apply_ctx(&θ.ctx)
+          .subtype_of(θ.clone(), &b2.apply_ctx(&θ.ctx))
+      },
+      // <:∀R
+      (t, Type::Forall(α, box s)) => {
+        let fresh_α = TypVar(state.fresh_mut());
+        state.ctx.push(Item::Var(fresh_α));
+        let s = s.clone().subst(Type::Var(fresh_α), *α);
+        t.subtype_of(state, &s)
+          .map(|θ| θ.drop_after(&Item::Var(fresh_α)))
+      },
+      // <:∀l
+      (Type::Forall(α, box t), s) => {
+        let fresh_α̂ = TypVar(state.fresh_mut());
+        state
+          .ctx
+          .extend_from_slice(&[Item::Marker(fresh_α̂), Item::Unsolved(fresh_α̂)]);
+        let t = t.clone().subst(Type::Exist(fresh_α̂), *α);
+        t.subtype_of(state, s)
+          .map(|θ| θ.drop_after(&Item::Marker(fresh_α̂)))
+      },
+      // <:Exvar
+      (Type::Exist(α̂), Type::Exist(β̂)) if α̂ == β̂ => Ok(state),
+      // <:InstantiateL
+      (Type::Exist(α̂), s) if !s.free_variables().contains(α̂) => {
+        α̂.instantiate_l(state, s.clone())
+      },
+      // <:InstantiateR
+      (t, Type::Exist(α̂)) if !t.free_variables().contains(α̂) => {
+        α̂.instantiate_r(state, t.clone())
+      },
+      // ERROR
+      _ => Err(TypeCheckError::NotASubtype(self.clone(), b.clone())),
     }
   }
 }
 
-#[derive(Clone)]
-struct State {
-  /// Typing context containing resolved constraints of the form
-  /// variable → its type.
-  ctx:  DBEnv<Type>,
-  /// Number of type variables in use.
-  tvar: TVar,
-}
+impl TypVar {
+  /// InstLSolve and InstRSolve: this is symmetric for both InstantiateL
+  /// and InstantiateR.
+  fn inst_solve(self, state: State, typ: &Type) -> Result<State, TypeCheckError> {
+    match typ.clone().to_mono() {
+      Some(τ) => {
+        let (ctx_l, _) = state
+          .ctx
+          .split_once(|i| *i == Item::Unsolved(self))
+          .unwrap();
+        match typ.well_formed_under(ctx_l) {
+          Err(_) => Err(TypeCheckError::InstSolveError),
+          Ok(()) => Ok(state.insert_at(&Item::Unsolved(self), &[Item::Solved(self, τ)])),
+        }
+      },
+      None => Err(TypeCheckError::InstSolveError),
+    }
+  }
 
-impl State {
-  /// Create a fresh new type variable, and increment the respective
-  /// counter in the state.
-  fn fresh_mut(&mut self) -> TVar {
-    self.tvar.0 += 1;
-    self.tvar
+  ///                   α̂.instantiateL(Γ, A) ≡ Γ ⊢ α̂ :=< A ⊣ Δ
+  ///
+  /// Under input context Γ, instantiate α̂ such that α̂ <: A, with output
+  /// context Δ.
+  fn instantiate_l(self, mut state: State, typ: Type) -> Result<State, TypeCheckError> {
+    // println!("instantiateL; ctx: {:?}  α̂: {:?}  a: {:?}", state.ctx, self, typ);
+    match self.inst_solve(state.clone(), &typ) {
+      Ok(state) => Ok(state),
+      Err(TypeCheckError::InstSolveError) => match typ {
+        // InstLReach
+        Type::Exist(β̂)
+          if Item::Unsolved(self).left_of(&Item::Unsolved(β̂), &state.ctx) =>
+        {
+          Ok(state.insert_at(
+            &Item::Unsolved(β̂),
+            &[Item::Solved(β̂, Monotype::Exist(self))],
+          ))
+        },
+        // InstLArr
+        Type::Arr(box t, box s) => {
+          let α̂1 = TypVar(state.fresh_mut());
+          let α̂2 = TypVar(state.fresh_mut());
+          let state = state.insert_at(
+            &Item::Unsolved(self),
+            &[
+              Item::Unsolved(α̂2),
+              Item::Unsolved(α̂1),
+              Item::Solved(
+                self,
+                Monotype::arr(Monotype::Exist(α̂1), Monotype::Exist(α̂2)),
+              ),
+            ],
+          );
+          let θ = α̂1.instantiate_r(state, t)?;
+          α̂2.instantiate_l(θ.clone(), s.apply_ctx(&θ.ctx))
+        },
+        // InstLAIIR
+        Type::Forall(α, box t) => {
+          let fresh_α = TypVar(state.fresh_mut());
+          state.ctx.push(Item::Var(fresh_α));
+          let t = t.subst(Type::Var(fresh_α), α);
+          self
+            .instantiate_l(state, t)
+            .map(|θ| θ.drop_after(&Item::Var(fresh_α)))
+        },
+        _ => Err(TypeCheckError::InstantiationError(self, typ)),
+      },
+      Err(err) => Err(err),
+    }
+  }
+
+  ///                   α̂.instantiate_r(Γ, A)  ≡  Γ ⊢ A =:< α̂ ⊣ Δ
+  ///
+  /// Under input context Γ, instantiate α̂ such that A <: α̂, with output
+  /// context Δ.
+  fn instantiate_r(self, mut state: State, typ: Type) -> Result<State, TypeCheckError> {
+    // println!("instantiateR; ctx: {:?}  a: {:?}  α̂: {:?}", state.ctx, typ, self);
+    match self.inst_solve(state.clone(), &typ) {
+      Ok(state) => Ok(state),
+      Err(TypeCheckError::InstSolveError) => match typ {
+        // InstRReach
+        Type::Exist(_) => self.instantiate_l(state, typ),
+        // InstRArr
+        Type::Arr(box t, box s) => {
+          let α̂1 = TypVar(state.fresh_mut());
+          let α̂2 = TypVar(state.fresh_mut());
+          let state = state.insert_at(
+            &Item::Unsolved(self),
+            &[
+              Item::Unsolved(α̂2),
+              Item::Unsolved(α̂1),
+              Item::Solved(
+                self,
+                Monotype::arr(Monotype::Exist(α̂1), Monotype::Exist(α̂2)),
+              ),
+            ],
+          );
+          let θ = α̂1.instantiate_l(state, t)?;
+          α̂2.instantiate_r(θ.clone(), s.apply_ctx(&θ.ctx))
+        },
+        // InstRAIIL
+        Type::Forall(α, box t) => {
+          let fresh_α̂ = TypVar(state.fresh_mut());
+          state
+            .ctx
+            .extend([Item::Marker(fresh_α̂), Item::Unsolved(fresh_α̂)]);
+          let t = t.subst(Type::Exist(fresh_α̂), α);
+          self
+            .instantiate_r(state, t)
+            .map(|θ| θ.drop_after(&Item::Marker(fresh_α̂)))
+        },
+        _ => Err(TypeCheckError::InstantiationError(self, typ)),
+      },
+      Err(err) => Err(err),
+    }
   }
 }
 
-/// Infer the type of an expression and gather constraints on it.
-fn gather_constraints(
-  state: &mut State,
-  expr: &Expr, // Gather constraints on the type of this.
-) -> Result<(Type, Constraints), TypeCheckError> {
-  match expr {
-    Expr::Const(_) => Ok((Type::JSON, Constraints::new())),
-    Expr::Var(v) => match state.ctx.lookup_var(v) {
-      None => type_error!(VariableNotInScope, v),
-      Some(t) => Ok((t.clone(), Constraints::new())),
-    },
-    Expr::Ann(e, t) => {
-      let (type_e, mut con) = gather_constraints(state, e)?;
-      con.0.push((t.clone(), type_e, *e.clone()));
-      Ok((t.clone(), con))
-    },
-    Expr::Arr(exprs) => Ok((
-      Type::JSON,
-      Constraints(exprs.iter().try_fold(Vec::new(), |mut acc, e| {
-        let (t_e, mut con_e) = gather_constraints(state, e)?;
-        acc.append(&mut con_e.0);
-        acc.push((t_e, Type::JSON, e.clone()));
-        Ok(acc)
-      })?),
-    )),
-    Expr::Obj(hm) => {
-      let cons = hm.iter().try_fold(Vec::new(), |mut acc, (k, v)| {
-        let (type_k, con_k) = gather_constraints(state, k)?;
-        let (type_v, con_v) = gather_constraints(state, v)?;
-        acc.extend_from_slice(&[con_k.0, con_v.0].concat());
-        acc.extend_from_slice(&[
-          (type_k, Type::JSON, k.clone()),
-          (type_v, Type::JSON, v.clone()),
-        ]);
-        Ok(acc)
-      })?;
-      Ok((Type::JSON, Constraints(cons)))
-    },
-    Expr::Lam(var, body) => {
-      let tv = Type::Var(state.fresh_mut());
-      state.ctx.add_mut(var, &tv);
-      let (ret_type, constrs) = gather_constraints(state, body)?;
-      Ok((arr(tv, ret_type), constrs))
-    },
-    Expr::App(f, x) => {
-      let (type_f, con_f) = gather_constraints(state, f)?;
-      let (type_x, con_x) = gather_constraints(state, x)?;
-      let ret_type = Type::Var(state.fresh_mut());
-      let mut constraints = Constraints([con_f.0, con_x.0].concat());
-      constraints
-        .0
-        .push((type_f, arr(type_x, ret_type.clone()), expr.clone()));
-      Ok((ret_type, constraints))
-    },
-    Expr::IfThenElse(i, t, e) => {
-      let (type_i, con_i) = gather_constraints(state, i)?;
-      let (type_t, con_t) = gather_constraints(state, t)?;
-      let (type_e, con_e) = gather_constraints(state, e)?;
-      let mut constraints = Constraints([con_i.0, con_t.0, con_e.0].concat());
-      constraints.0.extend_from_slice(&[
-        (type_t.clone(), type_e, expr.clone()),
-        (Type::JSON, type_i, *i.clone()),
-      ]);
-      Ok((type_t, constraints))
-    },
-    Expr::Builtin(b) => gather_constraints(state, &var(b.show())),
+impl Expr {
+  ///                   e.synth(Γ)  ≡  Γ ⊢ e ⇒ A ⊣ Δ
+  ///
+  /// Under input context Γ, e synthesizes (infers) output type A, with output
+  /// context Δ.
+  fn synth(&self, mut state: State) -> Result<(State, Type), TypeCheckError> {
+    // println!("infer; ctx: {:?}  e: {:?}", state.ctx, self);
+    match self {
+      // 1l⇒
+      Expr::Const(_) | Expr::Arr(_) | Expr::Obj(_) => Ok((state, Type::JSON)),
+      Expr::Builtin(b) => expr::var(b.show()).synth(state),
+      // Var
+      Expr::Var(v) => match state
+        .ctx
+        .iter()
+        .filter_map(|it| match it {
+          Item::Ann(y, t) if *y == v.name => Some((y, t)),
+          _ => None,
+        })
+        .rev()
+        .nth(v.level as usize)
+      {
+        Some((_, t)) => Ok((state.clone(), t.clone())),
+        None => match state.stdlib.get(&v.name) {
+          Some(t) => Ok((state.clone(), t.clone())),
+          None => Err(TypeCheckError::VariableNotInScope(v.clone())),
+        },
+      },
+      // Anno
+      Expr::Ann(e, t) => {
+        t.well_formed_under(&state.ctx)?;
+        let state = e.check(state, t)?;
+        Ok((state, t.clone()))
+      },
+      // →I⇒
+      Expr::Lam(x, e) => {
+        let α̂ = TypVar(state.fresh_mut());
+        let β̂ = TypVar(state.fresh_mut());
+        let ann = Item::Ann(x.to_string(), Type::Exist(α̂));
+        state
+          .ctx
+          .extend([Item::Unsolved(α̂), Item::Unsolved(β̂), ann.clone()]);
+        Ok((
+          e.check(state, &Type::Exist(β̂))
+            .map(|θ| θ.drop_after(&ann))?,
+          Type::arr(Type::Exist(α̂), Type::Exist(β̂)),
+        ))
+      },
+      // →E
+      Expr::App(f, x) => {
+        let (state, t) = f.synth(state)?;
+        x.apply_type(state.clone(), &t.apply_ctx(&state.ctx))
+      },
+      //
+      Expr::IfThenElse(i, t, e) => {
+        let state = i.check(state, &Type::JSON)?;
+        let (state, then_type) = t.synth(state)?;
+        let state = e.check(state, &then_type)?;
+        Ok((state, then_type))
+      },
+    }
+  }
+
+  ///                   e.check(Γ, A)  ≡  Γ ⊢ e ⇐ A ⊣ Δ
+  ///
+  /// Under input context Γ, e checks against input type A, with output
+  /// context Δ.
+  fn check(&self, mut state: State, against: &Type) -> Result<State, TypeCheckError> {
+    // println!("check; ctx: {:?}  e: {:?}  b: {:?}", state.ctx, self, against);
+    match (self, against) {
+      // 1I
+      (Expr::Const(_), Type::JSON) => Ok(state),
+      // ∀I
+      (_, Type::Forall(α, box t)) => {
+        let fresh_α = TypVar(state.fresh_mut());
+        state.ctx.push(Item::Var(fresh_α));
+        let t = t.clone().subst(Type::Var(fresh_α), *α);
+        self
+          .check(state, &t)
+          .map(|θ| θ.drop_after(&Item::Var(fresh_α)))
+      },
+      // →I
+      (Expr::Lam(x, e), Type::Arr(box t, box s)) => {
+        state.ctx.push(Item::Ann(x.clone(), t.clone()));
+        e.check(state, s)
+      },
+      // Sub
+      _ => {
+        let (state, typ) = self.synth(state)?;
+        typ
+          .apply_ctx(&state.ctx)
+          .subtype_of(state.clone(), &against.apply_ctx(&state.ctx))
+      },
+    }
+  }
+
+  ///                   e.apply_type(Γ, A)  ≡  Γ ⊢ A ∙ e ⇒> C ⊣ Δ
+  ///
+  /// Under input context Γ, applying a function of type A to e synthesises
+  /// type C, with output context Δ.
+  fn apply_type(
+    &self,
+    mut state: State,
+    typ: &Type,
+  ) -> Result<(State, Type), TypeCheckError> {
+    // println!("apply_type; ctx: {:?}  e: {:?}  b: {:?}", state.ctx, self, typ);
+    match typ {
+      // ∀App
+      Type::Forall(α, box t) => {
+        let α̂ = TypVar(state.fresh_mut());
+        state.ctx.push(Item::Unsolved(α̂));
+        self.apply_type(state, &t.clone().subst(Type::Exist(α̂), *α))
+      },
+      // α̂App
+      Type::Exist(α̂) => {
+        let α̂1 = TypVar(state.fresh_mut());
+        let α̂2 = TypVar(state.fresh_mut());
+        let state = state.insert_at(
+          &Item::Unsolved(*α̂),
+          &[
+            Item::Unsolved(α̂2),
+            Item::Unsolved(α̂1),
+            Item::Solved(*α̂, Monotype::arr(Monotype::Exist(α̂1), Monotype::Exist(α̂2))),
+          ],
+        );
+        let state = self.check(state, &Type::Exist(α̂1))?;
+        Ok((state, Type::Exist(α̂2)))
+      },
+      // →App
+      Type::Arr(t, box s) => Ok((self.check(state, t)?, s.clone())),
+      // ERROR
+      _ => Err(TypeCheckError::ApplicationError(self.clone(), typ.clone())),
+    }
   }
 }

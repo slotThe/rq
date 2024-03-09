@@ -1,8 +1,14 @@
+//! A tiny functional language to filter and manipulate JSON.
+
+#![allow(confusable_idents)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(iter_intersperse)]
 #![feature(lazy_cell)]
+#![feature(slice_split_once)]
 #![feature(try_blocks)]
+#![feature(type_changing_struct_update)]
+#![allow(rustdoc::invalid_rust_codeblocks)]
 
 mod eval;
 mod expr;
@@ -68,7 +74,7 @@ fn repl() -> Result<()> {
       },
       _ if buffer.starts_with(":t ") => {
         if let Some(expr) = parse_main(&buffer[3..]) {
-          match expr.infer(&STDLIB_TYPES) {
+          match expr.type_check(&STDLIB_TYPES) {
             Ok(typ) => writeln!(out_handle, "{typ}")?,
             Err(err) => writeln!(out_handle, "{err}")?,
           };
@@ -76,7 +82,7 @@ fn repl() -> Result<()> {
       },
       _ => {
         if let Some(expr) = parse_main(&buffer) {
-          match expr.check(&STDLIB_TYPES) {
+          match expr.to_tcexpr(&STDLIB_TYPES) {
             Ok(expr) => match expr.eval(&STDLIB_CTX) {
               Ok(expr) => writeln!(out_handle, "{expr}")?,
               Err(err) => writeln!(out_handle, "{err}")?,
@@ -100,7 +106,10 @@ fn oneshot() -> Result<()> {
     if let Some(json) = parse_main(&input) {
       println!(
         "{}",
-        expr.check(&STDLIB_TYPES)?.apply(json).eval(&STDLIB_CTX)?
+        expr
+          .to_tcexpr(&STDLIB_TYPES)?
+          .apply(json)
+          .eval(&STDLIB_CTX)?
       )
     }
   }
