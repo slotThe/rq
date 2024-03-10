@@ -7,9 +7,9 @@ pub mod error;
 pub mod test;
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy, Hash, PartialOrd, Ord)]
-pub struct TypVar(pub usize);
+pub struct Exist(pub usize);
 
-impl Display for TypVar {
+impl Display for Exist {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let (quot, rem) = (self.0 / 26, self.0 % 26);
     write!(
@@ -25,7 +25,7 @@ impl Display for TypVar {
   }
 }
 
-impl TypVar {
+impl Exist {
   /// Does the given type variable appear as unsolved in the type?
   pub fn unsolved_in(&self, typ: &Type) -> bool {
     match typ {
@@ -45,7 +45,7 @@ pub enum Type {
   /// A type variable α
   Var(String),
   /// An existential type variable α̂
-  Exist(TypVar),
+  Exist(Exist),
   /// A universal quantifier: ∀α. A
   Forall(String, Box<Type>),
   /// A → B
@@ -118,7 +118,7 @@ pub enum Monotype {
   /// A type variable α
   Var(String),
   /// An existential type variable α̂
-  Exist(TypVar),
+  Exist(Exist),
   /// τ → σ
   Arr(Box<Monotype>, Box<Monotype>),
 }

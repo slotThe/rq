@@ -2,7 +2,7 @@
 
 use std::{error::Error, fmt::Display};
 
-use super::{TypVar, Type};
+use super::{Exist, Type};
 use crate::{expr::{de_bruijn::DBVar, Expr}, util::style};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -10,7 +10,7 @@ pub enum TypeCheckError {
   TypeVariableNotInScope(String),
   MalformedType(Type),
   NotASubtype(Type, Type),
-  InstantiationError(TypVar, Type),
+  InstantiationError(Exist, Type),
   VariableNotInScope(DBVar),
   ApplicationError(Expr, Type),
   /// Internal error, does not abort the type checker.

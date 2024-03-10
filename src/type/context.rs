@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use super::{Monotype, TypVar, Type};
+use super::{Exist, Monotype, Type};
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Item {
@@ -11,11 +11,11 @@ pub enum Item {
   /// An annotation: x : A
   Ann(String, Type),
   /// An unsolved existential: α̂
-  Unsolved(TypVar),
+  Unsolved(Exist),
   /// A solved existential: α̂ = τ
-  Solved(TypVar, Monotype),
+  Solved(Exist, Monotype),
   /// An auxiliary marker type: ▸α̂
-  Marker(TypVar),
+  Marker(Exist),
 }
 
 impl Item {
@@ -80,7 +80,7 @@ impl State {
 impl Type {
   /// Apply a context, as a substitution, to a type.
   pub fn apply_ctx(&self, ctx: &[Item]) -> Self {
-    fn subst(α̂: &TypVar, τ: &Monotype, t: &Type) -> Type {
+    fn subst(α̂: &Exist, τ: &Monotype, t: &Type) -> Type {
       match t {
         Type::Exist(β̂) => {
           if α̂ == β̂ {

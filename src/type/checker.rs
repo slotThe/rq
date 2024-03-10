@@ -10,7 +10,7 @@
 
 use std::collections::BTreeMap;
 
-use super::{context::{Item, State}, error::TypeCheckError, Monotype, TypVar, Type};
+use super::{context::{Item, State}, error::TypeCheckError, Exist, Monotype, Type};
 use crate::expr::{self, app, Expr};
 
 /// A type-checked expression.
@@ -142,7 +142,7 @@ impl Type {
       },
       // <:∀l
       (Type::Forall(α, box t), s) => {
-        let fresh_α̂ = TypVar(state.fresh_mut());
+        let fresh_α̂ = Exist(state.fresh_mut());
         state
           .ctx
           .extend_from_slice(&[Item::Marker(fresh_α̂), Item::Unsolved(fresh_α̂)]);
@@ -162,7 +162,7 @@ impl Type {
   }
 }
 
-impl TypVar {
+impl Exist {
   /// InstLSolve and InstRSolve: this is symmetric for both InstantiateL
   /// and InstantiateR.
   fn inst_solve(self, state: State, typ: &Type) -> Result<State, TypeCheckError> {
@@ -201,8 +201,8 @@ impl TypVar {
         },
         // InstLArr
         Type::Arr(box t, box s) => {
-          let α̂1 = TypVar(state.fresh_mut());
-          let α̂2 = TypVar(state.fresh_mut());
+          let α̂1 = Exist(state.fresh_mut());
+          let α̂2 = Exist(state.fresh_mut());
           let state = state.insert_at(
             &Item::Unsolved(self),
             &[
@@ -245,8 +245,8 @@ impl TypVar {
         Type::Exist(_) => self.instantiate_l(state, typ),
         // InstRArr
         Type::Arr(box t, box s) => {
-          let α̂1 = TypVar(state.fresh_mut());
-          let α̂2 = TypVar(state.fresh_mut());
+          let α̂1 = Exist(state.fresh_mut());
+          let α̂2 = Exist(state.fresh_mut());
           let state = state.insert_at(
             &Item::Unsolved(self),
             &[
@@ -263,7 +263,7 @@ impl TypVar {
         },
         // InstRAIIL
         Type::Forall(α, box t) => {
-          let fresh_α̂ = TypVar(state.fresh_mut());
+          let fresh_α̂ = Exist(state.fresh_mut());
           state
             .ctx
             .extend([Item::Marker(fresh_α̂), Item::Unsolved(fresh_α̂)]);
@@ -315,8 +315,8 @@ impl Expr {
       },
       // →I⇒
       Expr::Lam(x, e) => {
-        let α̂ = TypVar(state.fresh_mut());
-        let β̂ = TypVar(state.fresh_mut());
+        let α̂ = Exist(state.fresh_mut());
+        let β̂ = Exist(state.fresh_mut());
         let ann = Item::Ann(x.to_string(), Type::Exist(α̂));
         state
           .ctx
@@ -388,14 +388,14 @@ impl Expr {
     match typ {
       // ∀App
       Type::Forall(α, box t) => {
-        let α̂ = TypVar(state.fresh_mut());
+        let α̂ = Exist(state.fresh_mut());
         state.ctx.push(Item::Unsolved(α̂));
         self.apply_type(state, &t.clone().subst(Type::Exist(α̂), α))
       },
       // α̂App
       Type::Exist(α̂) => {
-        let α̂1 = TypVar(state.fresh_mut());
-        let α̂2 = TypVar(state.fresh_mut());
+        let α̂1 = Exist(state.fresh_mut());
+        let α̂2 = Exist(state.fresh_mut());
         let state = state.insert_at(
           &Item::Unsolved(*α̂),
           &[
