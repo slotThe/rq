@@ -8,9 +8,10 @@ use std::fmt::Display;
 
 use crate::r#type::context::Item;
 
-pub mod checker;
+mod checker;
 mod context;
 pub mod error;
+pub mod expr;
 #[cfg(test)]
 pub mod test;
 
@@ -82,7 +83,7 @@ impl Type {
 }
 
 impl Type {
-  ///                   A.subst(B, α)  ≡  [B.α]A
+  ///           A.subst(B, α)  ≡  [B.α]A
   ///
   /// Substitute the type variable α with type B in A.
   pub fn subst(self, to: Self, from: &str) -> Self {
@@ -104,7 +105,7 @@ impl Type {
     }
   }
 
-  ///                   A.subst_type(C, B)  ≡  [B/C]A
+  ///           A.subst_type(C, B)  ≡  [B/C]A
   ///
   /// Substitute type C for B in A.
   pub fn subst_type(self, to: &Self, from: &Self) -> Self {

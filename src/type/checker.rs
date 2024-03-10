@@ -8,45 +8,8 @@
 //!
 //! The article is readily available [on the arXiv](https://arxiv.org/abs/1306.6032).
 
-use std::collections::BTreeMap;
-
 use super::{context::{Item, State}, error::{TResult, TypeCheckError}, Exist, Monotype, Type};
-use crate::expr::{self, app, Expr};
-
-/// A type-checked expression.
-#[derive(Debug)]
-pub struct TCExpr {
-  pub expr: Expr,
-}
-
-impl TCExpr {
-  /// Apply an expression to a type-checked expression. Assumes that the added
-  /// expression is well-formed—i.e., type-checks. This is essentially an
-  /// optimisation, as type-checking a large JSON chunk may take a while.
-  pub fn apply(self, json: Expr) -> TCExpr {
-    TCExpr {
-      expr: app(self.expr, json),
-    }
-  }
-}
-
-impl Expr {
-  /// Type check an expression.
-  pub fn type_check(&self, stdlib: &BTreeMap<String, Type>) -> TResult<Type> {
-    self.duplicate_type_vars()?;
-    // We use a mutable state instead of manually passing the context
-    // around. This is super scary to me, but I did want to learn Rust :)
-    let mut state = State::new(stdlib.clone());
-    let typ = self.synth(&mut state)?;
-    Ok(typ.finish(&state.ctx))
-  }
-
-  /// Construct a [TCExpr] out of an [Expr].
-  pub fn to_tcexpr(&self, ctx: &BTreeMap<String, Type>) -> TResult<TCExpr> {
-    self.type_check(ctx)?;
-    Ok(TCExpr { expr: self.clone() })
-  }
-}
+use crate::expr::{self, Expr};
 
 impl Type {
   ///                   A.well_formed_under(Γ)  ≡  Γ ⊢ A
@@ -258,7 +221,7 @@ impl Expr {
   ///
   /// Under input context Γ, e synthesizes (infers) output type A, with output
   /// context Δ.
-  fn synth(&self, state: &mut State) -> TResult<Type> {
+  pub fn synth(&self, state: &mut State) -> TResult<Type> {
     // println!("infer; ctx: {:?}  e: {:?}", state.ctx, self);
     match self {
       // 1l⇒

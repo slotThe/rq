@@ -20,6 +20,7 @@ use std::{collections::BTreeMap, env, io::{self, BufRead, Read, Write}};
 use anyhow::Result;
 use eval::stdlib::STDLIB_HELP;
 use expr::{parser::parse_main, Expr};
+use r#type::expr::TCExpr;
 
 use crate::eval::stdlib::{STDLIB_CTX, STDLIB_TYPES};
 
@@ -82,7 +83,7 @@ fn repl() -> Result<()> {
       },
       _ => {
         if let Some(expr) = parse_main(&buffer) {
-          match expr.to_tcexpr(&STDLIB_TYPES) {
+          match TCExpr::new(expr, &STDLIB_TYPES) {
             Ok(expr) => match expr.eval(&STDLIB_CTX) {
               Ok(expr) => writeln!(out_handle, "{expr}")?,
               Err(err) => writeln!(out_handle, "{err}")?,
@@ -106,8 +107,7 @@ fn oneshot() -> Result<()> {
     if let Some(json) = parse_main(&input) {
       println!(
         "{}",
-        expr
-          .to_tcexpr(&STDLIB_TYPES)?
+        TCExpr::new(expr, &STDLIB_TYPES)?
           .apply(json)
           .eval(&STDLIB_CTX)?
       )

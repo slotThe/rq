@@ -2,18 +2,18 @@
 mod evaluator {
   use std::assert_matches::assert_matches;
 
-  use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{arr, λ, num, obj, parser::parse, var, Expr}};
+  use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{arr, λ, num, obj, parser::parse, var, Expr}, TCExpr};
 
   macro_rules! eval_eq {
     ($left:expr, $right:expr $(,)?) => {
       assert_eq!(
-        &parse($left).unwrap().to_tcexpr(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &TCExpr::new(parse($left).unwrap(), &STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
         &Ok($right)
       )
     };
     ($left:expr, $right:expr, $($arg:tt)+) => {
       assert_eq!(
-        &parse($left).unwrap().to_tcexpr(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &TCExpr::new(parse($left).unwrap(), &STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
         &Ok($right),
         $($arg)+
       )
@@ -23,7 +23,7 @@ mod evaluator {
   macro_rules! eval_err {
     ($left:expr) => {
       assert_matches!(
-        &parse($left).unwrap().to_tcexpr(&STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &TCExpr::new(parse($left).unwrap(), &STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
         &Err(_)
       )
     };
