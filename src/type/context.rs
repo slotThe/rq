@@ -52,28 +52,22 @@ impl State {
   }
 
   /// Drop the context after and including `this`.
-  pub fn drop_after(self, this: &Item) -> Self {
-    Self {
-      ctx: self
-        .ctx
-        .into_iter()
-        .take_while(|item| this != item)
-        .collect(),
-      ..self
-    }
+  pub fn drop_after(&mut self, this: &Item) {
+    self.ctx = self
+      .ctx
+      .iter()
+      .cloned()
+      .take_while(|item| this != item)
+      .collect();
   }
 
   /// Insert `ins` in place if `at` in `self`.
-  pub fn insert_at(mut self, at: &Item, ins: &[Item]) -> Self {
-    let ix = match self.ctx.iter().position(|i| i == at) {
-      Some(ix) => ix,
-      None => panic!("Can't find {:?} in {:?}", at, self.ctx),
-    };
+  pub fn replace_with(&mut self, replace: &Item, with: &[Item]) {
+    let ix = self.ctx.iter().position(|i| i == replace).unwrap();
     self.ctx.remove(ix);
-    for (i, item) in ins.iter().enumerate() {
+    for (i, item) in with.iter().enumerate() {
       self.ctx.insert(i + ix, item.clone())
     }
-    self
   }
 }
 
