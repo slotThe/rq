@@ -16,6 +16,9 @@ pub enum TypeCheckError {
   ApplicationError(Expr, Type),
 }
 
+/// A value, or a type checking error.
+pub type TResult<A> = Result<A, TypeCheckError>;
+
 impl Error for TypeCheckError {}
 
 impl Display for TypeCheckError {
@@ -57,11 +60,8 @@ impl Display for TypeCheckError {
 impl Expr {
   /// Check whether the expression contains duplicate type variables (in a
   /// single annotation).
-  pub fn duplicate_type_vars(&self) -> Result<(), TypeCheckError> {
-    fn duplicates_in_type(
-      typ: &Type,
-      seen: &mut HashSet<String>,
-    ) -> Result<(), TypeCheckError> {
+  pub fn duplicate_type_vars(&self) -> TResult<()> {
+    fn duplicates_in_type(typ: &Type, seen: &mut HashSet<String>) -> TResult<()> {
       match typ {
         Type::Forall(α, t) => {
           if seen.contains(α) {

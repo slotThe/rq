@@ -10,7 +10,7 @@
 
 use std::collections::BTreeMap;
 
-use super::{context::{Item, State}, error::TypeCheckError, Exist, Monotype, Type};
+use super::{context::{Item, State}, error::{TResult, TypeCheckError}, Exist, Monotype, Type};
 use crate::expr::{self, app, Expr};
 
 /// A type-checked expression.
@@ -32,10 +32,7 @@ impl TCExpr {
 
 impl Expr {
   /// Type check an expression.
-  pub fn type_check(
-    &self,
-    stdlib: &BTreeMap<String, Type>,
-  ) -> Result<Type, TypeCheckError> {
+  pub fn type_check(&self, stdlib: &BTreeMap<String, Type>) -> TResult<Type> {
     self.duplicate_type_vars()?;
     // We use a mutable state instead of manually passing the context
     // around. This is super scary to me, but I did want to learn Rust :)
@@ -45,10 +42,7 @@ impl Expr {
   }
 
   /// Construct a [TCExpr] out of an [Expr].
-  pub fn to_tcexpr(
-    &self,
-    ctx: &BTreeMap<String, Type>,
-  ) -> Result<TCExpr, TypeCheckError> {
+  pub fn to_tcexpr(&self, ctx: &BTreeMap<String, Type>) -> TResult<TCExpr> {
     self.type_check(ctx)?;
     Ok(TCExpr { expr: self.clone() })
   }
@@ -58,7 +52,7 @@ impl Type {
   ///                   A.well_formed_under(Γ)  ≡  Γ ⊢ A
   ///
   /// Under context Γ, type A is well-formed.
-  fn well_formed_under(&self, ctx: &[Item]) -> Result<(), TypeCheckError> {
+  fn well_formed_under(&self, ctx: &[Item]) -> TResult<()> {
     match self {
       // UnitWF
       Type::JSON => Ok(()),
@@ -98,7 +92,7 @@ impl Type {
   ///
   /// Under input context Γ, type A is a subtype of B, with output context Δ.
   /// Figure 9.
-  fn subtype_of(&self, state: &mut State, b: &Type) -> Result<(), TypeCheckError> {
+  fn subtype_of(&self, state: &mut State, b: &Type) -> TResult<()> {
     // println!("subtype; ctx: {:?}  a: {:?}  b: {:?}", state.ctx, self, b);
     match (self, b) {
       // <:Var
@@ -167,7 +161,7 @@ impl Exist {
   ///
   /// Under input context Γ, instantiate α̂ such that α̂ <: A, with output
   /// context Δ.
-  fn instantiate_l(self, state: &mut State, typ: Type) -> Result<(), TypeCheckError> {
+  fn instantiate_l(self, state: &mut State, typ: Type) -> TResult<()> {
     // println!("instantiateL; ctx: {:?}  α̂: {:?}  a: {:?}", state.ctx, self, typ);
     match self.inst_solve(state, &typ) {
       Some(()) => Ok(()),
@@ -218,7 +212,7 @@ impl Exist {
   ///
   /// Under input context Γ, instantiate α̂ such that A <: α̂, with output
   /// context Δ.
-  fn instantiate_r(self, state: &mut State, typ: Type) -> Result<(), TypeCheckError> {
+  fn instantiate_r(self, state: &mut State, typ: Type) -> TResult<()> {
     // println!("instantiateR; ctx: {:?}  a: {:?}  α̂: {:?}", state.ctx, typ, self);
     match self.inst_solve(state, &typ) {
       Some(()) => Ok(()),
@@ -264,7 +258,7 @@ impl Expr {
   ///
   /// Under input context Γ, e synthesizes (infers) output type A, with output
   /// context Δ.
-  fn synth(&self, state: &mut State) -> Result<Type, TypeCheckError> {
+  fn synth(&self, state: &mut State) -> TResult<Type> {
     // println!("infer; ctx: {:?}  e: {:?}", state.ctx, self);
     match self {
       // 1l⇒
@@ -324,7 +318,7 @@ impl Expr {
   ///
   /// Under input context Γ, e checks against input type A, with output
   /// context Δ.
-  fn check(&self, state: &mut State, against: &Type) -> Result<(), TypeCheckError> {
+  fn check(&self, state: &mut State, against: &Type) -> TResult<()> {
     // println!("check; ctx: {:?}  e: {:?}  b: {:?}", state.ctx, self, against);
     match (self, against) {
       // 1I
@@ -355,7 +349,7 @@ impl Expr {
   ///
   /// Under input context Γ, applying a function of type A to e synthesises
   /// type C, with output context Δ.
-  fn apply_type(&self, state: &mut State, typ: &Type) -> Result<Type, TypeCheckError> {
+  fn apply_type(&self, state: &mut State, typ: &Type) -> TResult<Type> {
     // println!("apply_type; ctx: {:?}  e: {:?}  b: {:?}", state.ctx, self, typ);
     match typ {
       // ∀App
