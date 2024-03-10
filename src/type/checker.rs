@@ -146,20 +146,17 @@ impl Type {
 impl Exist {
   /// InstLSolve and InstRSolve: this is symmetric for both InstantiateL
   /// and InstantiateR.
-  fn inst_solve(self, state: State, typ: &Type) -> Result<State, TypeCheckError> {
-    match typ.clone().to_mono() {
-      Some(τ) => {
-        let (ctx_l, _) = state
-          .ctx
-          .split_once(|i| *i == Item::Unsolved(self))
-          .unwrap();
-        match typ.well_formed_under(ctx_l) {
-          Err(_) => Err(TypeCheckError::InstSolveError),
-          Ok(()) => Ok(state.insert_at(&Item::Unsolved(self), &[Item::Solved(self, τ)])),
-        }
-      },
-      None => Err(TypeCheckError::InstSolveError),
-    }
+  fn inst_solve(self, state: State, typ: &Type) -> Option<State> {
+    typ.clone().to_mono().and_then(|τ| {
+      let (ctx_l, _) = state
+        .ctx
+        .split_once(|i| *i == Item::Unsolved(self))
+        .unwrap();
+      typ
+        .well_formed_under(ctx_l)
+        .ok()
+        .map(|_| state.insert_at(&Item::Unsolved(self), &[Item::Solved(self, τ)]))
+    })
   }
 
   ///                   α̂.instantiateL(Γ, A) ≡ Γ ⊢ α̂ :=< A ⊣ Δ
@@ -169,8 +166,8 @@ impl Exist {
   fn instantiate_l(self, mut state: State, typ: Type) -> Result<State, TypeCheckError> {
     // println!("instantiateL; ctx: {:?}  α̂: {:?}  a: {:?}", state.ctx, self, typ);
     match self.inst_solve(state.clone(), &typ) {
-      Ok(state) => Ok(state),
-      Err(TypeCheckError::InstSolveError) => match typ {
+      Some(state) => Ok(state),
+      None => match typ {
         // InstLReach
         Type::Exist(β̂)
           if Item::Unsolved(self).left_of(&Item::Unsolved(β̂), &state.ctx) =>
@@ -209,7 +206,6 @@ impl Exist {
         },
         _ => Err(TypeCheckError::InstantiationError(self, typ)),
       },
-      Err(err) => Err(err),
     }
   }
 
@@ -220,8 +216,8 @@ impl Exist {
   fn instantiate_r(self, mut state: State, typ: Type) -> Result<State, TypeCheckError> {
     // println!("instantiateR; ctx: {:?}  a: {:?}  α̂: {:?}", state.ctx, typ, self);
     match self.inst_solve(state.clone(), &typ) {
-      Ok(state) => Ok(state),
-      Err(TypeCheckError::InstSolveError) => match typ {
+      Some(state) => Ok(state),
+      None => match typ {
         // InstRReach
         Type::Exist(_) => self.instantiate_l(state, typ),
         // InstRArr
@@ -255,7 +251,6 @@ impl Exist {
         },
         _ => Err(TypeCheckError::InstantiationError(self, typ)),
       },
-      Err(err) => Err(err),
     }
   }
 }

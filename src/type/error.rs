@@ -1,4 +1,4 @@
-//! Type check errors.
+//! Type checking errors.
 
 use std::{collections::HashSet, error::Error, fmt::Display};
 
@@ -14,9 +14,6 @@ pub enum TypeCheckError {
   InstantiationError(Exist, Type),
   VariableNotInScope(DBVar),
   ApplicationError(Expr, Type),
-  /// Internal error, does not abort the type checker.
-  InstSolveError,
-  // XXX: Might we think of something better here?
 }
 
 impl Error for TypeCheckError {}
@@ -53,7 +50,6 @@ impl Display for TypeCheckError {
           style(t)
         )
       },
-      TypeCheckError::InstSolveError => unreachable!(),
     }
   }
 }
