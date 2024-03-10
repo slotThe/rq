@@ -76,22 +76,20 @@ impl Type {
       (t, Type::Forall(α, box s)) => {
         // Type variables are assumed to be unique, so introducing a fresh one
         // here is not necessary.
-        state.ctx.push(Item::Var(α.clone()));
-        t.subtype_of(state, s)?;
-        state.drop_after(&Item::Var(α.clone()));
-        Ok(())
+        state.scoped_around(&[Item::Var(α.clone())], 0, |state| t.subtype_of(state, s))
       },
       // <:∀l
       (Type::Forall(α, box t), s) => {
         let fresh_α̂ = Exist(state.fresh_mut());
-        state
-          .ctx
-          .extend_from_slice(&[Item::Marker(fresh_α̂), Item::Unsolved(fresh_α̂)]);
-        t.clone()
-          .subst(Type::Exist(fresh_α̂), α)
-          .subtype_of(state, s)?;
-        state.drop_after(&Item::Marker(fresh_α̂));
-        Ok(())
+        state.scoped_around(
+          &[Item::Marker(fresh_α̂), Item::Unsolved(fresh_α̂)],
+          0,
+          |state| {
+            t.clone()
+              .subst(Type::Exist(fresh_α̂), α)
+              .subtype_of(state, s)
+          },
+        )
       },
       // <:Exvar
       (Type::Exist(α̂), Type::Exist(β̂)) if α̂ == β̂ => Ok(()),
@@ -161,10 +159,9 @@ impl Exist {
         Type::Forall(α, box t) => {
           // Type variables are assumed to be unique, so introducing a fresh one
           // here is not necessary.
-          state.ctx.push(Item::Var(α.clone()));
-          self.instantiate_l(state, t)?;
-          state.drop_after(&Item::Var(α));
-          Ok(())
+          state.scoped_around(&[Item::Var(α.clone())], 0, |state| {
+            self.instantiate_l(state, t.clone())
+          })
         },
         _ => Err(TypeCheckError::InstantiationError(self, typ)),
       },
@@ -203,12 +200,11 @@ impl Exist {
         // InstRAIIL
         Type::Forall(α, box t) => {
           let fresh_α̂ = Exist(state.fresh_mut());
-          state
-            .ctx
-            .extend([Item::Marker(fresh_α̂), Item::Unsolved(fresh_α̂)]);
-          self.instantiate_r(state, t.subst(Type::Exist(fresh_α̂), &α))?;
-          state.drop_after(&Item::Marker(fresh_α̂));
-          Ok(())
+          state.scoped_around(
+            &[Item::Marker(fresh_α̂), Item::Unsolved(fresh_α̂)],
+            0,
+            |state| self.instantiate_r(state, t.clone().subst(Type::Exist(fresh_α̂), &α)),
+          )
         },
         _ => Err(TypeCheckError::InstantiationError(self, typ)),
       },
@@ -254,12 +250,15 @@ impl Expr {
       Expr::Lam(x, e) => {
         let α̂ = Exist(state.fresh_mut());
         let β̂ = Exist(state.fresh_mut());
-        let ann = Item::Ann(x.to_string(), Type::Exist(α̂));
-        state
-          .ctx
-          .extend([Item::Unsolved(α̂), Item::Unsolved(β̂), ann.clone()]);
-        e.check(state, &Type::Exist(β̂))?;
-        state.drop_after(&ann);
+        state.scoped_around(
+          &[
+            Item::Unsolved(α̂),
+            Item::Unsolved(β̂),
+            Item::Ann(x.to_string(), Type::Exist(α̂)),
+          ],
+          2,
+          |state| e.check(state, &Type::Exist(β̂)),
+        )?;
         Ok(Type::arr(Type::Exist(α̂), Type::Exist(β̂)))
       },
       // →E
@@ -290,10 +289,7 @@ impl Expr {
       (_, Type::Forall(α, box t)) => {
         // Type variables are assumed to be unique, so introducing a fresh one
         // here is not necessary.
-        state.ctx.push(Item::Var(α.clone()));
-        self.check(state, t)?;
-        state.drop_after(&Item::Var(α.clone()));
-        Ok(())
+        state.scoped_around(&[Item::Var(α.clone())], 0, |state| self.check(state, t))
       },
       // →I
       (Expr::Lam(x, e), Type::Arr(box t, box s)) => {

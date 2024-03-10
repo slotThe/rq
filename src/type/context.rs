@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use super::{Exist, Monotype, Type};
+use super::{error::TResult, Exist, Monotype, Type};
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Item {
@@ -51,16 +51,6 @@ impl State {
     self.count - 1
   }
 
-  /// Drop the context after and including `this`.
-  pub fn drop_after(&mut self, this: &Item) {
-    self.ctx = self
-      .ctx
-      .iter()
-      .cloned()
-      .take_while(|item| this != item)
-      .collect();
-  }
-
   /// Insert `ins` in place if `at` in `self`.
   pub fn replace_with(&mut self, replace: &Item, with: &[Item]) {
     let ix = self.ctx.iter().position(|i| i == replace).unwrap();
@@ -68,6 +58,26 @@ impl State {
     for (i, item) in with.iter().enumerate() {
       self.ctx.insert(i + ix, item.clone())
     }
+  }
+
+  /// `state.scoped_around(more, ix, act)` extends the `state` with `more`,
+  /// executes `act`, and then drops every after and including the `n`th item
+  /// from `more`.
+  pub fn scoped_around<F: FnOnce(&mut Self) -> TResult<()>>(
+    &mut self,
+    more: &[Item],
+    n: usize,
+    act: F,
+  ) -> TResult<()> {
+    self.ctx.extend_from_slice(more);
+    act(self)?;
+    self.ctx = self
+      .ctx
+      .iter()
+      .cloned()
+      .take_while(|item| &more[n] != item)
+      .collect();
+    Ok(())
   }
 }
 
