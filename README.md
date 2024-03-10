@@ -217,7 +217,7 @@ $ cargo metadata --format-version=1 | rq '.packages | map .name'
   id    : ∀a. a → a,
 
   -- Return the first argument
-  const : JSON → JSON → JSON
+  const : ∀a. ∀b. a → b → a
 
   -- `get i x` gets the i'th thing out of x. I should be (evaluate to) a
   -- number or a string, with x evaluating to array or object, respectively.
