@@ -313,7 +313,12 @@ fn p_expr() -> impl Parser<char, Expr, Error = Simple<char>> {
 
     // Parse a type.
     let p_type = recursive(|p_type| {
+      let p_forall = just("forall").or(just("∀")).padded()
+        .ignore_then(text::ident().then_ignore(just(".").padded()))
+        .then(p_type.clone())
+        .map(|(α, t): (String, Type)| Type::forall(α.as_str(), t));
       let inner = choice((
+        p_forall.clone(),
         text::ident().try_map( // JSON
           move |s: <char as chumsky::text::Character>::Collection, span| {
             if "json" == &s.as_str().to_lowercase() {
