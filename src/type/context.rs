@@ -7,7 +7,7 @@ use super::{Monotype, TypVar, Type};
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Item {
   /// A type variable: α
-  Var(TypVar),
+  Var(String),
   /// An annotation: x : A
   Ann(String, Type),
   /// An unsolved existential: α̂
@@ -89,7 +89,7 @@ impl Type {
             t.clone()
           }
         },
-        Type::Forall(α, t) => Type::forall(*α, subst(α̂, τ, t)),
+        Type::Forall(α, t) => Type::forall(α, subst(α̂, τ, t)),
         Type::Arr(t1, t2) => Type::arr(subst(α̂, τ, t1), subst(α̂, τ, t2)),
         _ => t.clone(),
       }

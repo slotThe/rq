@@ -7,7 +7,7 @@ use crate::{expr::{de_bruijn::DBVar, Expr}, util::style};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeCheckError {
-  TypeVariableNotInScope(TypVar),
+  TypeVariableNotInScope(String),
   MalformedType(Type),
   NotASubtype(Type, Type),
   InstantiationError(TypVar, Type),

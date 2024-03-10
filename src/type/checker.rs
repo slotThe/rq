@@ -8,7 +8,7 @@
 //!
 //! The article is readily available [on the arXiv](https://arxiv.org/abs/1306.6032).
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::BTreeMap;
 
 use super::{context::{Item, State}, error::TypeCheckError, Monotype, TypVar, Type};
 use crate::expr::{self, app, Expr};
@@ -37,9 +37,8 @@ impl Expr {
     stdlib: &BTreeMap<String, Type>,
   ) -> Result<Type, TypeCheckError> {
     let state = State::new(stdlib.clone());
-    let (state, mut typ) = self.synth(state)?;
-    typ.finish_mut(&state.ctx);
-    Ok(typ)
+    let (state, typ) = self.synth(state)?;
+    Ok(typ.finish(&state.ctx))
   }
 
   /// Construct a [TCExpr] out of an [Expr].
@@ -53,61 +52,22 @@ impl Expr {
 }
 
 impl Type {
-  /// Clean up after type checking: normalise all type variables (make them
-  /// start at 0) and replace existential (unsolved) type variables with
-  /// universal quantification.
-  fn finish_mut(&mut self, ctx: &[Item]) {
-    // Enumerate all type variables
-    fn enum_tvars(tvars: &mut BTreeSet<TypVar>, typ: &Type) {
-      match typ {
-        Type::JSON => {},
-        Type::Var(v) | Type::Exist(v) => {
-          tvars.insert(*v);
-        },
-        Type::Arr(t1, t2) => {
-          enum_tvars(tvars, t1);
-          enum_tvars(tvars, t2);
-        },
-        Type::Forall(α, t) => {
-          tvars.insert(*α);
-          enum_tvars(tvars, t);
-        },
-      }
-    }
-
-    // Scale all type variables down, so they start at 0.
-    fn downscale(tvars: &HashMap<TypVar, usize>, typ: &mut Type) {
-      match typ {
-        Type::Var(tvar) | Type::Exist(tvar) => {
-          tvar.0 = *tvars.get(tvar).unwrap();
-        },
-        Type::JSON => {},
-        Type::Arr(t1, t2) => {
-          downscale(tvars, t1);
-          downscale(tvars, t2);
-        },
-        Type::Forall(α, t) => {
-          α.0 = *tvars.get(α).unwrap();
-          downscale(tvars, t);
-        },
-      }
-    }
-
-    // Eschew existential type variables and replace them with universal
-    // quantification. This looks nicer.
+  /// Clean up after type checking: replace existential (unsolved) type
+  /// variables with universal quantification.
+  fn finish(self, ctx: &[Item]) -> Self {
     fn forallise(typ: Type, rule: &Item) -> Type {
       match rule {
         Item::Unsolved(α̂) if α̂.unsolved_in(&typ) => {
-          Type::forall(*α̂, typ.subst(Type::Var(*α̂), *α̂))
+          let name = α̂.to_string();
+          Type::forall(
+            &name.clone(),
+            typ.subst_type(&Type::Var(name), &Type::Exist(*α̂)),
+          )
         },
         _ => typ,
       }
     }
-
-    *self = ctx.iter().rfold(self.apply_ctx(ctx), forallise);
-    let mut tvars = BTreeSet::new();
-    enum_tvars(&mut tvars, self);
-    downscale(&tvars.into_iter().zip(0..).collect(), self);
+    ctx.iter().rfold(self.apply_ctx(ctx), forallise)
   }
 }
 
@@ -121,10 +81,10 @@ impl Type {
       Type::JSON => Ok(()),
       // UvarWF
       Type::Var(α) => {
-        if ctx.contains(&Item::Var(*α)) {
+        if ctx.contains(&Item::Var(α.clone())) {
           Ok(())
         } else {
-          Err(TypeCheckError::TypeVariableNotInScope(*α))
+          Err(TypeCheckError::TypeVariableNotInScope(α.clone()))
         }
       },
       // EvarWF and SolvedEvarWF
@@ -140,7 +100,9 @@ impl Type {
         }
       },
       // ForallWF
-      Type::Forall(α, t) => t.well_formed_under(&[ctx, &[Item::Var(*α)]].concat()),
+      Type::Forall(α, t) => {
+        t.well_formed_under(&[ctx, &[Item::Var(α.clone())]].concat())
+      },
       // ArrowWF
       Type::Arr(t1, t2) => {
         t1.well_formed_under(ctx)?;
@@ -172,11 +134,11 @@ impl Type {
       },
       // <:∀R
       (t, Type::Forall(α, box s)) => {
-        let fresh_α = TypVar(state.fresh_mut());
-        state.ctx.push(Item::Var(fresh_α));
-        let s = s.clone().subst(Type::Var(fresh_α), *α);
-        t.subtype_of(state, &s)
-          .map(|θ| θ.drop_after(&Item::Var(fresh_α)))
+        // Type variables are assumed to be unique, so introducing a fresh one
+        // here is not necessary.
+        state.ctx.push(Item::Var(α.clone()));
+        t.subtype_of(state, s)
+          .map(|θ| θ.drop_after(&Item::Var(α.clone())))
       },
       // <:∀l
       (Type::Forall(α, box t), s) => {
@@ -184,20 +146,16 @@ impl Type {
         state
           .ctx
           .extend_from_slice(&[Item::Marker(fresh_α̂), Item::Unsolved(fresh_α̂)]);
-        let t = t.clone().subst(Type::Exist(fresh_α̂), *α);
+        let t = t.clone().subst(Type::Exist(fresh_α̂), α);
         t.subtype_of(state, s)
           .map(|θ| θ.drop_after(&Item::Marker(fresh_α̂)))
       },
       // <:Exvar
       (Type::Exist(α̂), Type::Exist(β̂)) if α̂ == β̂ => Ok(state),
       // <:InstantiateL
-      (Type::Exist(α̂), s) if !s.free_variables().contains(α̂) => {
-        α̂.instantiate_l(state, s.clone())
-      },
+      (Type::Exist(α̂), s) if !α̂.unsolved_in(s) => α̂.instantiate_l(state, s.clone()),
       // <:InstantiateR
-      (t, Type::Exist(α̂)) if !t.free_variables().contains(α̂) => {
-        α̂.instantiate_r(state, t.clone())
-      },
+      (t, Type::Exist(α̂)) if !α̂.unsolved_in(t) => α̂.instantiate_r(state, t.clone()),
       // ERROR
       _ => Err(TypeCheckError::NotASubtype(self.clone(), b.clone())),
     }
@@ -261,12 +219,12 @@ impl TypVar {
         },
         // InstLAIIR
         Type::Forall(α, box t) => {
-          let fresh_α = TypVar(state.fresh_mut());
-          state.ctx.push(Item::Var(fresh_α));
-          let t = t.subst(Type::Var(fresh_α), α);
+          // Type variables are assumed to be unique, so introducing a fresh one
+          // here is not necessary.
+          state.ctx.push(Item::Var(α.clone()));
           self
             .instantiate_l(state, t)
-            .map(|θ| θ.drop_after(&Item::Var(fresh_α)))
+            .map(|θ| θ.drop_after(&Item::Var(α)))
         },
         _ => Err(TypeCheckError::InstantiationError(self, typ)),
       },
@@ -309,7 +267,7 @@ impl TypVar {
           state
             .ctx
             .extend([Item::Marker(fresh_α̂), Item::Unsolved(fresh_α̂)]);
-          let t = t.subst(Type::Exist(fresh_α̂), α);
+          let t = t.subst(Type::Exist(fresh_α̂), &α);
           self
             .instantiate_r(state, t)
             .map(|θ| θ.drop_after(&Item::Marker(fresh_α̂)))
@@ -395,12 +353,12 @@ impl Expr {
       (Expr::Const(_), Type::JSON) => Ok(state),
       // ∀I
       (_, Type::Forall(α, box t)) => {
-        let fresh_α = TypVar(state.fresh_mut());
-        state.ctx.push(Item::Var(fresh_α));
-        let t = t.clone().subst(Type::Var(fresh_α), *α);
+        // Type variables are assumed to be unique, so introducing a fresh one
+        // here is not necessary.
+        state.ctx.push(Item::Var(α.clone()));
         self
-          .check(state, &t)
-          .map(|θ| θ.drop_after(&Item::Var(fresh_α)))
+          .check(state, t)
+          .map(|θ| θ.drop_after(&Item::Var(α.clone())))
       },
       // →I
       (Expr::Lam(x, e), Type::Arr(box t, box s)) => {
@@ -432,7 +390,7 @@ impl Expr {
       Type::Forall(α, box t) => {
         let α̂ = TypVar(state.fresh_mut());
         state.ctx.push(Item::Unsolved(α̂));
-        self.apply_type(state, &t.clone().subst(Type::Exist(α̂), *α))
+        self.apply_type(state, &t.clone().subst(Type::Exist(α̂), α))
       },
       // α̂App
       Type::Exist(α̂) => {

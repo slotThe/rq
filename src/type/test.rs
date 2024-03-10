@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{eval::stdlib::STDLIB_TYPES, expr::{de_bruijn::DBVar, parser::parse}, r#type::{error::TypeCheckError, TypVar, Type}};
+use crate::{eval::stdlib::STDLIB_TYPES, expr::{de_bruijn::DBVar, parser::parse}, r#type::{error::TypeCheckError, Type}};
 
 macro_rules! check_eq {
   ($left:expr, $right:expr $(,)?) => {
@@ -24,16 +24,16 @@ fn infer_type_of_S_combinator() {
   check_eq!(
     "λf -> λg → |x| f x (g x)",
     Type::forall(
-      TypVar(2),
+      "j",
       Type::forall(
-        TypVar(1),
+        "i",
         Type::forall(
-          TypVar(0),
+          "g",
           Type::arr(
-            Type::arr(Type::var(0), Type::arr(Type::var(1), Type::var(2))),
+            Type::arr(Type::var("g"), Type::arr(Type::var("i"), Type::var("j"))),
             Type::arr(
-              Type::arr(Type::var(0), Type::var(1)),
-              Type::arr(Type::var(0), Type::var(2))
+              Type::arr(Type::var("g"), Type::var("i")),
+              Type::arr(Type::var("g"), Type::var("j"))
             )
           )
         )

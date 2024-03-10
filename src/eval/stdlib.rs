@@ -3,7 +3,7 @@
 use std::{collections::BTreeMap, fmt::{self, Display}, sync::LazyLock};
 
 use self::pretty::Blocks;
-use crate::r#type::{TypVar, Type};
+use crate::r#type::Type;
 
 pub mod pretty;
 
@@ -114,13 +114,19 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
 
   BTreeMap::from([
     mk_fun!(
-      Builtin::Id,
-      Type::forall(TypVar(1000), Type::arr(Type::var(1000), Type::var(1000))),
+      Builtin::Id, // ∀a. a → a
+      Type::forall("a", Type::arr(Type::var("a"), Type::var("a"))),
       Blocks::to_plain("Return the argument.")
     ),
     mk_fun!(
-      Builtin::BConst,
-      Type::arr(JSON, Type::arr(JSON, JSON)),
+      Builtin::BConst, // ∀a. ∀b. a → b → a
+      Type::forall(
+        "a",
+        Type::forall(
+          "b",
+          Type::arr(Type::var("a"), Type::arr(Type::var("b"), Type::var("a")))
+        )
+      ),
       Blocks::new()
         .fancy("const a b")
         .plain("returns")
