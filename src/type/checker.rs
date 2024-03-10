@@ -8,7 +8,7 @@
 //!
 //! The article is readily available [on the arXiv](https://arxiv.org/abs/1306.6032).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use super::{context::{Item, State}, error::TypeCheckError, Exist, Monotype, Type};
 use crate::expr::{self, app, Expr};
@@ -36,6 +36,7 @@ impl Expr {
     &self,
     stdlib: &BTreeMap<String, Type>,
   ) -> Result<Type, TypeCheckError> {
+    self.duplicate_type_vars()?;
     let state = State::new(stdlib.clone());
     let (state, typ) = self.synth(state)?;
     Ok(typ.finish(&state.ctx))
