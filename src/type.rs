@@ -1,4 +1,12 @@
+//! The types of a type!
+//!
+//! Generally, a type can either be a polytype ([Type]) or a [Monotype]; the
+//! latter is almost like the former, only it does not allow universal
+//! quantification.
+
 use std::fmt::Display;
+
+use crate::r#type::context::Item;
 
 pub mod checker;
 mod context;
@@ -72,8 +80,11 @@ impl Type {
 
   pub fn var(v: &str) -> Self { Self::Var(v.to_string()) }
 }
+
 impl Type {
-  /// Substitute to with from (a string) in self.
+  ///                   A.subst(B, α)  ≡  [B.α]A
+  ///
+  /// Substitute the type variable α with type B in A.
   pub fn subst(self, to: Self, from: &str) -> Self {
     match self {
       Self::JSON | Self::Exist(_) => self.clone(),
@@ -93,6 +104,9 @@ impl Type {
     }
   }
 
+  ///                   A.subst_type(C, B)  ≡  [B/C]A
+  ///
+  /// Substitute type C for B in A.
   pub fn subst_type(self, to: &Self, from: &Self) -> Self {
     match self {
       Self::JSON | Self::Var(_) | Self::Exist(_) => {
@@ -110,6 +124,28 @@ impl Type {
   }
 }
 
+impl Type {
+  /// Clean up after type checking: replace existential (unsolved) type
+  /// variables with universal quantification.
+  pub fn finish(self, ctx: &[Item]) -> Self {
+    fn forallise(typ: Type, rule: &Item) -> Type {
+      match rule {
+        Item::Unsolved(α̂) if α̂.unsolved_in(&typ) => {
+          let name = α̂.to_string();
+          Type::forall(
+            &name.clone(),
+            typ.subst_type(&Type::Var(name), &Type::Exist(*α̂)),
+          )
+        },
+        _ => typ,
+      }
+    }
+    ctx.iter().rfold(self.apply_ctx(ctx), forallise)
+  }
+}
+
+// XXX: This could be expressed extremely elegantly with GADTs—alas.
+
 /// A monotype: like [Type], but without universal quantification.
 #[derive(PartialEq, Eq, Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]
@@ -124,6 +160,7 @@ pub enum Monotype {
 }
 
 impl Monotype {
+  /// Convert a [Monotype] to a (poly)[Type].
   pub fn to_poly(&self) -> Type {
     match self {
       Self::JSON => Type::JSON,
@@ -137,6 +174,8 @@ impl Monotype {
 }
 
 impl Type {
+  /// Try to convert (poly)[Type] to a [Monotype]. Fails if the [Type]
+  /// contains universal quantification.
   pub fn to_mono(&self) -> Option<Monotype> {
     match self {
       Self::Forall(_, _) => None,

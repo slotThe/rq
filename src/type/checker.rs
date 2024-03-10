@@ -8,7 +8,7 @@
 //!
 //! The article is readily available [on the arXiv](https://arxiv.org/abs/1306.6032).
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 use super::{context::{Item, State}, error::TypeCheckError, Exist, Monotype, Type};
 use crate::expr::{self, app, Expr};
@@ -49,26 +49,6 @@ impl Expr {
   ) -> Result<TCExpr, TypeCheckError> {
     self.type_check(ctx)?;
     Ok(TCExpr { expr: self.clone() })
-  }
-}
-
-impl Type {
-  /// Clean up after type checking: replace existential (unsolved) type
-  /// variables with universal quantification.
-  fn finish(self, ctx: &[Item]) -> Self {
-    fn forallise(typ: Type, rule: &Item) -> Type {
-      match rule {
-        Item::Unsolved(α̂) if α̂.unsolved_in(&typ) => {
-          let name = α̂.to_string();
-          Type::forall(
-            &name.clone(),
-            typ.subst_type(&Type::Var(name), &Type::Exist(*α̂)),
-          )
-        },
-        _ => typ,
-      }
-    }
-    ctx.iter().rfold(self.apply_ctx(ctx), forallise)
   }
 }
 
