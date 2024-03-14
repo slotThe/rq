@@ -9,4 +9,11 @@ license = "GPL-3.0"
 [dependencies]
 anyhow = "1.0.79"
 ariadne = "0.4.0"
-chumsky = "0.9.3"
+chumsky = { git = "https://github.com/zesterer/chumsky", version = "1.0.0-alpha.6" }
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+opt-level = 3
+debug = false

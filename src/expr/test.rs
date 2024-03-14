@@ -4,10 +4,10 @@ mod parser {
 
   macro_rules! parse_eq {
     ($left:expr, $right:expr $(,)?) => {
-      assert_eq!(&parse($left), &Ok($right))
+      assert_eq!(&parse($left), &$right)
     };
     ($left:expr, $right:expr, $($arg:tt)+) => {
-      assert_eq!(&parse($left), &Ok($right), $($arg)+)
+      assert_eq!(&parse($left), &$right, $($arg)+)
     };
   }
 

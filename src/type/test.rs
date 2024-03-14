@@ -5,13 +5,13 @@ use crate::{eval::stdlib::STDLIB_TYPES, expr::{de_bruijn::DBVar, parser::parse},
 macro_rules! check_eq {
   ($left:expr, $right:expr $(,)?) => {
     assert_eq!(
-      &parse($left).unwrap().type_check(&STDLIB_TYPES),
+      &parse($left).type_check(&STDLIB_TYPES),
       &Ok($right)
     )
   };
   ($left:expr, $right:expr, $($arg:tt)+) => {
     assert_eq!(
-      &parse($left).unwrap().infer(&STDLIB_TYPES),
+      &parse($left).infer(&STDLIB_TYPES),
       &Ok($right),
       $($arg)+
     )
@@ -44,7 +44,7 @@ fn infer_type_of_S_combinator() {
 
 #[test]
 fn de_bruijn() {
-  let expr = parse("|x| x@1").unwrap();
+  let expr = parse("|x| x@1");
   assert_eq!(
     expr.type_check(&BTreeMap::new()),
     Err(TypeCheckError::VariableNotInScope(DBVar::from_pair("x", 1))),

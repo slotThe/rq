@@ -7,13 +7,13 @@ mod evaluator {
   macro_rules! eval_eq {
     ($left:expr, $right:expr $(,)?) => {
       assert_eq!(
-        &TCExpr::new(parse($left).unwrap(), &STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &TCExpr::new(parse($left), &STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
         &Ok($right)
       )
     };
     ($left:expr, $right:expr, $($arg:tt)+) => {
       assert_eq!(
-        &TCExpr::new(parse($left).unwrap(), &STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &TCExpr::new(parse($left), &STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
         &Ok($right),
         $($arg)+
       )
@@ -23,7 +23,7 @@ mod evaluator {
   macro_rules! eval_err {
     ($left:expr) => {
       assert_matches!(
-        &TCExpr::new(parse($left).unwrap(), &STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
+        &TCExpr::new(parse($left), &STDLIB_TYPES).unwrap().eval(&STDLIB_CTX),
         &Err(_)
       )
     };
@@ -71,6 +71,7 @@ mod evaluator {
   fn higher_order_functions() {
     eval_eq!("foldl (+) 0 [1, 2, 3, 4]", num(10));
     eval_eq!("map (- 1) [1, 2, 3, 4]", arr(&[num(0), num(1), num(2), num(3)]));
+    eval_eq!("map (1 +) [1, 2, 3, 4]", arr(&[num(2), num(3), num(4), num(5)]));
   }
 
 }
