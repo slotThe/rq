@@ -110,7 +110,7 @@ pub static STDLIB_TYPES: LazyLock<BTreeMap<String, Type>> = LazyLock::new(|| {
 });
 
 pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
-  use Type::JSON;
+  use Type::*;
 
   BTreeMap::from([
     mk_fun!(
@@ -149,7 +149,16 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
     ),
     mk_fun!(
       Builtin::Map, // (a → b) → [a] → [b]
-      Type::arr(Type::arr(JSON, JSON), Type::arr(JSON, JSON)),
+      Type::forall(
+        "a",
+        Type::forall(
+          "b",
+          Type::arr(
+            Type::arr(Type::var("a"), Type::var("b")),
+            Type::arr(JSON, JSON)
+          )
+        )
+      ),
       Blocks::new()
         .fancy("map f xs")
         .plain("applies")
@@ -174,9 +183,15 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
     ),
     mk_fun!(
       Builtin::Foldl, // (b → a → b) → b → [a] → b
-      Type::arr(
-        Type::arr(JSON, Type::arr(JSON, JSON)),
-        Type::arr(JSON, Type::arr(JSON, JSON)),
+      Type::forall(
+        "a",
+        Type::forall(
+          "b",
+          Type::arr(
+            Type::arr(Type::var("b"), Type::arr(Type::var("a"), Type::var("b"))),
+            Type::arr(Type::var("b"), Type::arr(JSON, Type::var("b"))),
+          )
+        )
       ),
       Blocks::new()
         .plain("Left-associative fold over an array or (values of an) object; e.g.,")
@@ -189,18 +204,18 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
     ),
     mk_fun!(
       Builtin::Sub,
-      Type::arr(JSON, Type::arr(JSON, JSON)),
+      Type::arr(Num, Type::arr(Num, Num)),
       Blocks::to_plain("Subtract two numbers."),
     ),
     mk_fun!(
       Builtin::Mul,
-      Type::arr(JSON, Type::arr(JSON, JSON)),
+      Type::arr(Num, Type::arr(Num, Num)),
       Blocks::to_plain("Multiply two numbers."),
       "·"
     ),
     mk_fun!(
       Builtin::Div,
-      Type::arr(JSON, Type::arr(JSON, JSON)),
+      Type::arr(Num, Type::arr(Num, Num)),
       Blocks::to_plain(
         "Divide two numbers. No guarantees if the denominator is zero—the world might \
          explode.",
@@ -221,7 +236,7 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
     ),
     mk_fun!(
       Builtin::Le,
-      Type::arr(JSON, Type::arr(JSON, JSON)),
+      Type::arr(Num, Type::arr(Num, Num)),
       Blocks::new()
         .fancy("e < e'")
         .plain("checks whether")
@@ -231,7 +246,7 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
     ),
     mk_fun!(
       Builtin::Leq,
-      Type::arr(JSON, Type::arr(JSON, JSON)),
+      Type::arr(Num, Type::arr(Num, Num)),
       Blocks::new()
         .fancy("e ≤ e'")
         .plain("checks whether")
@@ -242,7 +257,7 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
     ),
     mk_fun!(
       Builtin::Ge,
-      Type::arr(JSON, Type::arr(JSON, JSON)),
+      Type::arr(Num, Type::arr(Num, Num)),
       Blocks::new()
         .fancy("e > e'")
         .plain("checks whether")
@@ -252,7 +267,7 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
     ),
     mk_fun!(
       Builtin::Geq,
-      Type::arr(JSON, Type::arr(JSON, JSON)),
+      Type::arr(Num, Type::arr(Num, Num)),
       Blocks::new()
         .fancy("e ≥ e'")
         .plain("checks whether")

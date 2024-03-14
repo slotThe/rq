@@ -9,7 +9,7 @@
 //! The article is readily available [on the arXiv](https://arxiv.org/abs/1306.6032).
 
 use super::{context::{Item, State}, error::{TResult, TypeCheckError}, Exist, Monotype, Type};
-use crate::expr::{self, Expr};
+use crate::expr::{self, Const, Expr};
 
 impl Type {
   ///                   A.well_formed_under(Γ)  ≡  Γ ⊢ A
@@ -18,6 +18,7 @@ impl Type {
   fn well_formed_under(&self, ctx: &[Item]) -> TResult<()> {
     match self {
       // UnitWF
+      Type::Num => Ok(()),
       Type::JSON => Ok(()),
       // UvarWF
       Type::Var(α) => {
@@ -65,9 +66,11 @@ impl Type {
       },
       // <:JSON ≡ <:Unit
       (Type::JSON, Type::JSON) => Ok(()),
+      // A number is a subtype of a JSON object.
+      (Type::Num, Type::Num | Type::JSON) => Ok(()),
       // <:→
       (Type::Arr(a1, a2), Type::Arr(b1, b2)) => {
-        b1.subtype_of(state, a1)?;
+        b1.subtype_of(state, a1)?; /* Contravariant! */
         // See Note [Apply]
         a2.apply_ctx(&state.ctx)
           .subtype_of(state, &b2.apply_ctx(&state.ctx))
@@ -221,6 +224,7 @@ impl Expr {
     // println!("infer; ctx: {:?}  e: {:?}", state.ctx, self);
     match self {
       // 1l⇒
+      Expr::Const(Const::Num(_)) => Ok(Type::Num),
       Expr::Const(_) | Expr::Arr(_) | Expr::Obj(_) => Ok(Type::JSON),
       Expr::Builtin(b) => expr::var(b.show()).synth(state),
       // Var

@@ -173,9 +173,9 @@ $ cargo metadata --format-version=1 | rq '.packages | map .name'
 
   ``` agda
   (+)  : JSON → JSON → JSON  -- Also works for string concatenation
-  (-)  : JSON → JSON → JSON
-  (*)  : JSON → JSON → JSON
-  (/)  : JSON → JSON → JSON
+  (-)  : Num → Num → Num
+  (*)  : Num → Num → Num
+  (/)  : Num → Num → Num
   ```
 
 - Comparisons:
@@ -185,10 +185,10 @@ $ cargo metadata --format-version=1 | rq '.packages | map .name'
   ``` agda
   (=)  : JSON → JSON → JSON
   (!=) : JSON → JSON → JSON
-  (<)  : JSON → JSON → JSON
-  (<=) : JSON → JSON → JSON
-  (>)  : JSON → JSON → JSON
-  (>=) : JSON → JSON → JSON
+  (<)  : Num → Num → Num
+  (<=) : Num → Num → Num
+  (>)  : Num → Num → Num
+  (>=) : Num → Num → Num
   ```
 
 - Higher order functions:
