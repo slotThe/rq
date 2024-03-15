@@ -185,9 +185,9 @@ The type system looks as follows:
 
   ``` agda
   (+)  : JSON → JSON → JSON  -- Also works for string concatenation
-  (-)  : Num → Num → Num
-  (*)  : Num → Num → Num
-  (/)  : Num → Num → Num
+  (-)  : JSON → JSON → JSON
+  (*)  : JSON → JSON → JSON
+  (/)  : JSON → JSON → JSON
   ```
 
 - Comparisons:
@@ -197,10 +197,10 @@ The type system looks as follows:
   ``` agda
   (=)  : JSON → JSON → JSON
   (!=) : JSON → JSON → JSON
-  (<)  : Num → Num → Num
-  (<=) : Num → Num → Num
-  (>)  : Num → Num → Num
-  (>=) : Num → Num → Num
+  (<)  : JSON → JSON → JSON
+  (<=) : JSON → JSON → JSON
+  (>)  : JSON → JSON → JSON
+  (>=) : JSON → JSON → JSON
   ```
 
 - Higher order functions:

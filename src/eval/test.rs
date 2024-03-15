@@ -72,6 +72,7 @@ mod evaluator {
     eval_eq!("foldl (+) 0 [1, 2, 3, 4]", num(10));
     eval_eq!("map (- 1) [1, 2, 3, 4]", arr(&[num(0), num(1), num(2), num(3)]));
     eval_eq!("map (1 +) [1, 2, 3, 4]", arr(&[num(2), num(3), num(4), num(5)]));
+    eval_eq!("(filter (get \"age\" | (>= 42)) | map .age | foldl (+) 0) [{name: \"A\", age: 43},{name:\"B\"},{name:\"C\", age:42}]", num(85));
   }
 
 }
