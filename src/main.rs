@@ -22,7 +22,7 @@ use eval::stdlib::STDLIB_HELP;
 use expr::{parser::{parse_expr, parse_json}, Expr};
 use r#type::expr::TCExpr;
 
-use crate::eval::stdlib::{STDLIB_CTX, STDLIB_TYPES};
+use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::app};
 
 fn main() -> Result<()> {
   let arg = env::args().nth(1);
@@ -107,9 +107,7 @@ fn oneshot() -> Result<()> {
     if let Some(json) = parse_json(&input) {
       println!(
         "{}",
-        TCExpr::new(expr, &STDLIB_TYPES)?
-          .apply(json)
-          .eval(&STDLIB_CTX)?
+        TCExpr::new(app(expr, json), &STDLIB_TYPES)?.eval(&STDLIB_CTX)?
       )
     }
   }

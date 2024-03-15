@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::{context::State, error::TResult, Type};
-use crate::expr::{app, Expr};
+use crate::expr::Expr;
 
 /// A type-checked expression.
 #[derive(Debug)]
@@ -14,15 +14,6 @@ impl TCExpr {
   pub fn new(expr: Expr, ctx: &BTreeMap<String, Type>) -> TResult<Self> {
     expr.type_check(ctx)?;
     Ok(TCExpr { expr })
-  }
-
-  /// Apply an expression to a type-checked expression. Assumes that the added
-  /// expression is well-formed—i.e., type-checks. This is essentially an
-  /// optimisation, as type-checking a large JSON chunk may take a while.
-  pub fn apply(self, json: Expr) -> Self {
-    TCExpr {
-      expr: app(self.expr, json),
-    }
   }
 }
 
