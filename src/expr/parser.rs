@@ -377,12 +377,107 @@ fn mk_dot_syntax(head: Option<Expr>, mut xs: Vec<Expr>) -> Expr {
   }
 }
 
+/// Parse JSON into an [Expr]. Implementation taken from [chumsky's examples].
+/// This is here mostly for efficiency, as the expression language is quite a
+/// bit more complicated than JSON itself.
+///
+/// [chumsky's examples]: https://github.com/zesterer/chumsky/blob/e3b91d80da96a38d9798fccf6549bd28d00e52cc/examples/json.rs
+#[rustfmt::skip]
+fn p_json<'a>() -> impl Parser<'a, &'a str, Expr, extra::Err<Rich<'a, char>>> {
+  recursive(|value| {
+    let digits = text::digits(10).to_slice();
+
+    let frac = just('.').then(digits);
+
+    let exp = just('e').or(just('E'))
+      .then(one_of("+-").or_not())
+      .then(digits);
+
+    let number = just('-').or_not()
+      .then(text::int(10))
+      .then(frac.or_not())
+      .then(exp.or_not())
+      .to_slice()
+      .map(|s: &str| s.parse().unwrap())
+      .boxed();
+
+    let escape = just('\\')
+      .then(choice((
+        just('\\'),
+        just('/'),
+        just('"'),
+        just('b').to('\x08'),
+        just('f').to('\x0C'),
+        just('n').to('\n'),
+        just('r').to('\r'),
+        just('t').to('\t'),
+        just('u').ignore_then(text::digits(16).exactly(4).to_slice().validate(
+          |digits, e, emitter| {
+            char::from_u32(u32::from_str_radix(digits, 16).unwrap()).unwrap_or_else(
+              || {
+                emitter.emit(Rich::custom(e.span(), "invalid unicode character"));
+                '\u{FFFD}' // unicode replacement character
+              },
+            )
+          },
+        )),
+      )))
+      .ignored()
+      .boxed();
+
+    let string = none_of("\\\"").ignored()
+      .or(escape).repeated().to_slice()
+      .map(ToString::to_string)
+      .delimited_by(just('"'), just('"'))
+      .boxed();
+
+    let array = value.clone()
+      .separated_by(just(',').padded())
+      .allow_trailing()
+      .collect()
+      .padded()
+      .delimited_by(just('['), just(']'))
+      .boxed();
+
+    let member = string.clone()
+      .then_ignore(just(':').padded())
+      .then(value)
+      .map(|(s, v)| (Expr::Const(Const::String(s)), v));
+    let object = member.clone()
+      .separated_by(just(',').padded())
+      .collect()
+      .padded()
+      .delimited_by(just('{'), just('}'))
+      .boxed();
+
+    choice((
+      just("null").to(Expr::Const(Const::Null)),
+      just("true").to(Expr::Const(Const::Bool(true))),
+      just("false").to(Expr::Const(Const::Bool(false))),
+      number.map(|n| Expr::Const(Const::Num(n))),
+      string.map(|s| Expr::Const(Const::String(s))),
+      array.map(Expr::Arr),
+      object.map(Expr::Obj),
+    ))
+    .padded()
+  })
+}
+
 #[cfg(test)]
 pub fn parse(inp: &str) -> Expr { p_expr().then_ignore(end()).parse(inp.trim()).unwrap() }
 
-/// Parse an expression.
-pub fn parse_main(inp: &str) -> Option<Expr> {
-  let (expr, errs) = p_expr()
+/// Parse an [Expr].
+pub fn parse_expr(inp: &str) -> Option<Expr> { parse_main(p_expr, inp) }
+
+/// Parse JSON into an [Expr].
+pub fn parse_json(inp: &str) -> Option<Expr> { parse_main(p_json, inp) }
+
+/// Parse the input with the given parser.
+fn parse_main<'a, T>(parser: impl Fn() -> T, inp: &'a str) -> Option<Expr>
+where
+  T: Parser<'a, &'a str, Expr, extra::Err<Rich<'a, char>>>,
+{
+  let (expr, errs) = parser()
     .then_ignore(end())
     .parse(inp.trim())
     .into_output_errors();

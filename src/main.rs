@@ -19,7 +19,7 @@ use std::{collections::BTreeMap, env, io::{self, BufRead, Read, Write}};
 
 use anyhow::Result;
 use eval::stdlib::STDLIB_HELP;
-use expr::{parser::parse_main, Expr};
+use expr::{parser::{parse_expr, parse_json}, Expr};
 use r#type::expr::TCExpr;
 
 use crate::eval::stdlib::{STDLIB_CTX, STDLIB_TYPES};
@@ -47,10 +47,10 @@ fn repl() -> Result<()> {
   while in_handle.read_line(&mut buffer).is_ok() {
     match &buffer {
       _ if buffer.starts_with(":e ") => {
-        parse_main(&buffer[3..]).map(|e| writeln!(out_handle, "{}", e));
+        parse_expr(&buffer[3..]).map(|e| writeln!(out_handle, "{}", e));
       },
       _ if buffer.starts_with(":d ") => {
-        parse_main(&buffer[3..]).map(|e| writeln!(out_handle, "{:?}", e));
+        parse_expr(&buffer[3..]).map(|e| writeln!(out_handle, "{:?}", e));
       },
       _ if buffer.starts_with(":i ") => {
         match STDLIB_HELP.get(&buffer[3..].trim()) {
@@ -71,10 +71,10 @@ fn repl() -> Result<()> {
           let _ = writeln!(out_handle, "{name}	{}", help.wrap("	", 50));
         }),
       _ if buffer.starts_with(":dp ") => {
-        parse_main(&buffer[4..]).map(|e| writeln!(out_handle, "{:#?}", e));
+        parse_expr(&buffer[4..]).map(|e| writeln!(out_handle, "{:#?}", e));
       },
       _ if buffer.starts_with(":t ") => {
-        if let Some(expr) = parse_main(&buffer[3..]) {
+        if let Some(expr) = parse_expr(&buffer[3..]) {
           match expr.type_check(&STDLIB_TYPES) {
             Ok(typ) => writeln!(out_handle, "{typ}")?,
             Err(err) => writeln!(out_handle, "{err}")?,
@@ -82,7 +82,7 @@ fn repl() -> Result<()> {
         }
       },
       _ => {
-        if let Some(expr) = parse_main(&buffer) {
+        if let Some(expr) = parse_expr(&buffer) {
           match TCExpr::new(expr, &STDLIB_TYPES) {
             Ok(expr) => match expr.eval(&STDLIB_CTX) {
               Ok(expr) => writeln!(out_handle, "{expr}")?,
@@ -103,8 +103,8 @@ fn repl() -> Result<()> {
 fn oneshot() -> Result<()> {
   let mut input = String::new();
   io::stdin().read_to_string(&mut input)?;
-  if let Some(expr) = parse_main(&env::args().collect::<Vec<_>>()[1]) {
-    if let Some(json) = parse_main(&input) {
+  if let Some(expr) = parse_expr(&env::args().collect::<Vec<_>>()[1]) {
+    if let Some(json) = parse_json(&input) {
       println!(
         "{}",
         TCExpr::new(expr, &STDLIB_TYPES)?
