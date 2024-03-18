@@ -14,7 +14,9 @@
       let
         overlays = [ rust-overlay.overlays.default ];
         pkgs = import nixpkgs { inherit system overlays; };
-        toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+        toolchain = (pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml).override {
+          extensions = [ "rustc-codegen-cranelift-preview" ];
+        };
         platform = pkgs.makeRustPlatform {
           cargo = toolchain;
           rustc = toolchain;
@@ -29,8 +31,7 @@
             src = ./.;
             meta = {
               license = lib.licenses.gpl3;
-              description =
-                "a tiny functional language with which you can manipulate JSON";
+              description = "a tiny functional language to manipulate JSON";
             };
             cargoLock.lockFile = ./Cargo.lock;
           };
