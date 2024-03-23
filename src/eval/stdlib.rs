@@ -12,6 +12,7 @@ pub enum Builtin {
   Id,
   BConst,
   Get,
+  Set,
   Map,
   Filter,
   Foldl,
@@ -145,6 +146,23 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
         .fancy("i")
         .plain("should be (evaluate to) a number or a string, and")
         .fancy("x")
+        .plain("should evaluate to an array or object.")
+    ),
+    mk_fun!(
+      Builtin::Set,
+      Type::arr(JSON, Type::arr(JSON, Type::arr(JSON, JSON))),
+      Blocks::new()
+        .fancy("set i x coll")
+        .plain("sets the")
+        .fancy("i'th")
+        .plain("thing in")
+        .fancy("coll")
+        .plain("to")
+        .fancy("x,")
+        .plain("where")
+        .fancy("i")
+        .plain("should be a number or a string, and")
+        .fancy("coll")
         .plain("should evaluate to an array or object.")
     ),
     mk_fun!(

@@ -50,6 +50,12 @@ impl Display for EvalError {
   }
 }
 
+macro_rules! eval_err {
+  (WrongIndex, $ix:expr, $x:expr $(,)?) => {
+    EvalError::WrongIndex($ix.to_string(), $x.reify()?)
+  };
+}
+
 fn num_vars(names: &[String], var: &str) -> isize {
   names.iter().filter(|&v| v == var).count() as isize
 }
@@ -76,6 +82,8 @@ impl Sem {
   fn app(&self, s2: &Sem) -> Sem {
     Sem::App(Box::new(self.clone()), Box::new(s2.clone()))
   }
+
+  fn str(s: &str) -> Self { Self::SConst(Const::String(s.to_string())) }
 
   fn is_truthy(&self) -> bool {
     !matches!(
@@ -144,12 +152,30 @@ impl Sem {
       // Get
       (App(box SBuiltin(Get), box SConst(Const::Num(i))), Arr(xs)) => xs
         .get(**i as usize)
-        .ok_or(EvalError::WrongIndex(i.to_string(), x.reify()?))
+        .ok_or(eval_err!(WrongIndex, i, x))
         .cloned(),
       (App(box SBuiltin(Get), box SConst(Const::String(s))), Obj(ob)) => ob
-        .get(&SConst(Const::String(s.to_string())))
-        .ok_or(EvalError::WrongIndex(s.to_string(), x.reify()?))
+        .get(&Sem::str(s))
+        .ok_or(eval_err!(WrongIndex, s, x))
         .cloned(),
+      // Set
+      (App(box App(box SBuiltin(Set), box SConst(Const::Num(i))), box to), Arr(xs)) => {
+        let mut ys = xs.clone();
+        *ys
+          .get_mut(**i as usize)
+          .ok_or(eval_err!(WrongIndex, i, x))? = to.clone();
+        Ok(Arr(ys))
+      },
+      (
+        App(box App(box SBuiltin(Set), box SConst(Const::String(s))), box to),
+        Obj(ob),
+      ) => {
+        let mut res = ob.clone();
+        *res
+          .get_mut(&Sem::str(s))
+          .ok_or(eval_err!(WrongIndex, s, x))? = to.clone();
+        Ok(Obj(res))
+      },
       // Map
       (App(box SBuiltin(Map), closure), Arr(xs)) => {
         Ok(Arr(xs.iter().flat_map(|x| closure.apply(x)).collect()))

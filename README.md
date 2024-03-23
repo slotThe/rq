@@ -234,6 +234,11 @@ The type system looks as follows:
   -- `get i x` gets the i'th thing out of x. I should be (evaluate to) a
   -- number or a string, with x evaluating to array or object, respectively.
   get   : JSON → JSON → JSON
+
+  -- `set i x` coll sets the i'th thing in coll to x, where i
+  -- should be a number or a string, and coll should evaluate to
+  -- an array or object.
+  set   : JSON → JSON → JSON → JSON
   ```
 
 ## REPL

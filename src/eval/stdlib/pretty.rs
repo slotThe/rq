@@ -8,6 +8,7 @@ impl Builtin {
       Builtin::Id => "id",
       Builtin::BConst => "const",
       Builtin::Get => "get",
+      Builtin::Set => "set",
       Builtin::Map => "map",
       Builtin::Filter => "filter",
       Builtin::Foldl => "foldl",

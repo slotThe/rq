@@ -2,7 +2,7 @@
 mod evaluator {
   use std::assert_matches::assert_matches;
 
-  use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{arr, λ, num, obj, parser::parse, var, Expr}, TCExpr};
+  use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::{arr, expr_str, num, obj, parser::parse, var, λ, Expr}, TCExpr};
 
   macro_rules! eval_eq {
     ($left:expr, $right:expr $(,)?) => {
@@ -73,6 +73,8 @@ mod evaluator {
     eval_eq!("map (- 1) [1, 2, 3, 4]", arr(&[num(0), num(1), num(2), num(3)]));
     eval_eq!("map (1 +) [1, 2, 3, 4]", arr(&[num(2), num(3), num(4), num(5)]));
     eval_eq!("(filter (get \"age\" | (>= 42)) | map .age | foldl (+) 0) [{name: \"A\", age: 43},{name:\"B\"},{name:\"C\", age:42}]", num(85));
+    eval_eq!("set 1 2 [ 1, 10, 3, 4 ]", arr(&[num(1), num(2), num(3), num(4)]));
+    eval_eq!("(λx → set 1 x.name [ 1, 10, 3, 4 ]) { name: \"bob\" }", arr(&[num(1), expr_str("bob"), num(3), num(4)]));
   }
 
 }
