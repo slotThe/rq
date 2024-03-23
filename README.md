@@ -16,7 +16,7 @@ Use at your own risk :)
 
 Use `cargo install`.
 For nix users, a dev-shell is provided by the flake; one can access it with `nix develop`.
-Additionally, you can run `rq` directly from the git repo:
+Additionally, you can run `rq` directly from the git repository:
 
 ``` console
 $ nix run github:slotThe/rq
@@ -192,7 +192,7 @@ The type system looks as follows:
 
 - Comparisons:
 
-  Essensially, everything that is not `false` or `null` is considered truthy.
+  Essentially, everything that is not `false` or `null` is considered truthy.
 
   ``` agda
   (=)  : JSON → JSON → JSON
