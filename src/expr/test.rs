@@ -79,6 +79,7 @@ mod parser {
     parse_eq!(".0", λ("ω", app(app(var("get"), num(0)), var("ω"))));
     parse_eq!("map .0 [1]", app(app(var("map"), λ("ω", app(app(var("get"), num(0)), var("ω")))), arr(&[num(1)])));
     parse_eq!("filter (.0 | (= 1)) [[1],[2]]", app(app(var("filter"), λ("x", app(λ("x", app(app(Builtin(Eq), var("x")), num(1))), app(λ("ω", app(app(var("get"), num(0)), var("ω"))), var("x"))))), arr(&[arr(&[num(1)]), arr(&[num(2)])])));
+    parse_eq!("|f, x| f x.1", λ("f", λ("x", app(var("f"), app(app(var("get"), num(1)), var("x"))))));
   }
 
   #[test]

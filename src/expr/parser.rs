@@ -154,10 +154,15 @@ fn p_expr<'a>() -> impl Parser<'a, &'a str, Expr, extra::Err<Rich<'a, char>>> {
         .then(p_dot_syntax_worker.clone())
         .map(|(head, xs)| mk_dot_syntax(Some(head), xs));
 
+      let p_dot_syntax_try_head = head.clone().or_not()
+        .then(p_dot_syntax_worker.clone())
+        .map(|(mb_head, xs)| mk_dot_syntax(mb_head, xs));
+
       let go = p_dot_syntax_head.or(head.clone()) // the f in f x
         .foldl(
           // the x in f x
           choice((
+            p_dot_syntax_try_head.clone(),
             p_var,
             p_if_then_else.clone(),
             p_const.clone(),
@@ -165,8 +170,7 @@ fn p_expr<'a>() -> impl Parser<'a, &'a str, Expr, extra::Err<Rich<'a, char>>> {
             p_obj.clone(),
             p_lam.clone().padded().delimited_by(just('('), just(')')),
             p_app.padded().delimited_by(just('('), just(')')),
-            p_dot_syntax_no_head.clone().delimited_by(just('('), just(')')),
-            p_dot_syntax_no_head.clone(),
+            p_dot_syntax_try_head.clone().delimited_by(just('('), just(')')),
             p_expr.clone().padded().delimited_by(just('('), just(')')),
             p_expr.clone().padded(),
           )).padded().repeated(),
