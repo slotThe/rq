@@ -33,7 +33,10 @@
               license = lib.licenses.gpl3;
               description = "a tiny functional language to manipulate JSON";
             };
-            cargoLock.lockFile = ./Cargo.lock;
+            cargoLock = {
+              outputHashes."chumsky-1.0.0-alpha.6" = "sha256-zQYygpL3m7EoqShn2pag8NAXOgv4qr4L3l8KotwbJ7w=";
+              lockFile = ./Cargo.lock;
+            };
           };
 
           default = self.packages."${system}".rq;
