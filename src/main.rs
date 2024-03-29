@@ -30,7 +30,14 @@ fn main() -> Result<()> {
   if arg.is_none() || arg == Some("repl".to_string()) {
     repl()
   } else {
-    oneshot()
+    let mut input = String::new();
+    // Try to read from the given file; if that does not work read from stdin.
+    if let Some(mut file) = env::args().nth(2).and_then(|f| std::fs::File::open(f).ok()) {
+      file.read_to_string(&mut input)?;
+    } else {
+      io::stdin().read_to_string(&mut input)?;
+    }
+    oneshot(&input, &env::args().collect::<Vec<_>>()[1])
   }
 }
 
@@ -101,11 +108,10 @@ fn repl() -> Result<()> {
   Ok(())
 }
 
-fn oneshot() -> Result<()> {
-  let mut input = String::new();
-  io::stdin().read_to_string(&mut input)?;
-  if let Some(expr) = parse_expr(&env::args().collect::<Vec<_>>()[1]) {
-    if let Some(json) = parse_json(&input) {
+/// Try to read from the given file, or read from stdin if that fails.
+fn oneshot(input: &str, expr: &str) -> Result<()> {
+  if let Some(expr) = parse_expr(expr) {
+    if let Some(json) = parse_json(input) {
       println!(
         "{}",
         TCExpr::new(app(expr, json), &STDLIB_TYPES)?.eval(&STDLIB_CTX)?
