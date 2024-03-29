@@ -239,7 +239,7 @@ impl Expr {
         .nth(v.level as usize)
       {
         Some((_, t)) => Ok(t.clone()),
-        None => match state.stdlib.get(&v.name) {
+        None => match state.stdlib.get(v.name.as_str()) {
           Some(t) => Ok(t.clone()),
           None => Err(TypeCheckError::VariableNotInScope(v.clone())),
         },

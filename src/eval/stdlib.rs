@@ -108,16 +108,16 @@ pub static STDLIB_HELP: LazyLock<BTreeMap<&'static str, Blocks>> = LazyLock::new
     .collect()
 });
 
-pub static STDLIB_TYPES: LazyLock<BTreeMap<String, Type>> = LazyLock::new(|| {
+pub static STDLIB_TYPES: LazyLock<BTreeMap<&'static str, Type>> = LazyLock::new(|| {
   STDLIB
     .clone()
     .into_values()
     .flat_map(|f| {
       [
-        [(f.name.to_string(), f.expr_type.clone())].to_vec(),
+        [(f.name, f.expr_type.clone())].to_vec(),
         f.aliases
           .into_iter()
-          .map(|a| (a.to_string(), f.expr_type.clone()))
+          .map(|a| (a, f.expr_type.clone()))
           .collect(),
       ]
       .concat()

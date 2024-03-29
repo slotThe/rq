@@ -33,12 +33,12 @@ pub struct State {
   /// Context in the sense of the paper.
   pub ctx:    Vec<Item>,
   /// Our standard library.
-  pub stdlib: BTreeMap<String, Type>,
+  pub stdlib: BTreeMap<&'static str, Type>,
 }
 
 impl State {
   /// Create a new [State] from just the standard library.
-  pub fn new(stdlib: BTreeMap<String, Type>) -> Self {
+  pub fn new(stdlib: BTreeMap<&'static str, Type>) -> Self {
     Self {
       count: 0,
       ctx: vec![],
