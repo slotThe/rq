@@ -116,7 +116,7 @@ fn p_expr<'a>() -> impl Parser<'a, &'a str, Expr, extra::Err<Rich<'a, char>>> {
         ),
       // Rust-like
       p_varlike.padded().separated_by(just(',')).at_least(1).collect::<Vec<_>>()
-        .delimited_by(just('|'), just('|'))
+        .delimited_by(just('|'), just('|')).padded()
         .then(p_expr.clone())
         .map(|(hs, e)| hs.iter().rfold(e, |acc, h| λ(h, acc))),
     ));
