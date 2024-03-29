@@ -15,7 +15,7 @@ pub enum Builtin {
   Set,
   Map,
   Filter,
-  Foldl,
+  Fold,
   Add,
   Sub,
   Mul,
@@ -200,7 +200,7 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
         .plain("Keep the elements for which the predicate returns truthy."),
     ),
     mk_fun!(
-      Builtin::Foldl, // (b → a → b) → b → [a] → b
+      Builtin::Fold, // (b → a → b) → b → [a] → b
       Type::forall(
         "a",
         Type::forall(
@@ -213,7 +213,8 @@ pub static STDLIB: LazyLock<BTreeMap<Builtin, StdFun>> = LazyLock::new(|| {
       ),
       Blocks::new()
         .plain("Left-associative fold over an array or (values of an) object; e.g.,")
-        .fancy("    foldl f α [x₁, x₂, …, xₙ]  ≡  f(f(…f(α, x₁), …), xₙ)."),
+        .fancy("    fold f α [x₁, x₂, …, xₙ]  ≡  f(f(…f(α, x₁), …), xₙ)."),
+      "foldl"
     ),
     mk_fun!(
       Builtin::Add,

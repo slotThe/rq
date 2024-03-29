@@ -211,10 +211,10 @@ impl Sem {
           .collect(),
       )),
       // Foldl
-      (App(box App(box SBuiltin(Foldl), closure), init), Arr(xs)) => xs
+      (App(box App(box SBuiltin(Fold), closure), init), Arr(xs)) => xs
         .iter()
         .try_fold(*init.clone(), |acc, x| closure.apply(&acc)?.apply(x)),
-      (App(box App(box SBuiltin(Foldl), closure), init), Obj(ob)) => ob
+      (App(box App(box SBuiltin(Fold), closure), init), Obj(ob)) => ob
         .iter()
         .try_fold(*init.clone(), |acc, (_, v)| closure.apply(&acc)?.apply(v)),
       // Binary operators

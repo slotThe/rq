@@ -11,7 +11,7 @@ impl Builtin {
       Builtin::Set => "set",
       Builtin::Map => "map",
       Builtin::Filter => "filter",
-      Builtin::Foldl => "foldl",
+      Builtin::Fold => "fold",
       Builtin::Add => "+",
       Builtin::Sub => "-",
       Builtin::Mul => "*",
