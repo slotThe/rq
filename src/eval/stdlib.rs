@@ -83,9 +83,15 @@ macro_rules! mk_fun {
 pub static STDLIB_CTX: LazyLock<BTreeMap<&'static str, Builtin>> = LazyLock::new(|| {
   STDLIB
     .clone()
-    .values()
-    .map(|f| (f.name, f.builtin))
-    .collect::<BTreeMap<&'static str, Builtin>>()
+    .into_values()
+    .flat_map(|f| {
+      [
+        [(f.name, f.builtin)].to_vec(),
+        f.aliases.into_iter().map(|a| (a, f.builtin)).collect(),
+      ]
+      .concat()
+    })
+    .collect()
 });
 
 pub static STDLIB_HELP: LazyLock<BTreeMap<&'static str, Blocks>> = LazyLock::new(|| {
@@ -106,7 +112,16 @@ pub static STDLIB_TYPES: LazyLock<BTreeMap<String, Type>> = LazyLock::new(|| {
   STDLIB
     .clone()
     .into_values()
-    .map(|f| (f.name.to_string(), f.expr_type))
+    .flat_map(|f| {
+      [
+        [(f.name.to_string(), f.expr_type.clone())].to_vec(),
+        f.aliases
+          .into_iter()
+          .map(|a| (a.to_string(), f.expr_type.clone()))
+          .collect(),
+      ]
+      .concat()
+    })
     .collect()
 });
 
