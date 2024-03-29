@@ -120,3 +120,60 @@ fn oneshot(input: &str, expr: &str) -> Result<()> {
   }
   Ok(())
 }
+
+#[cfg(test)]
+mod test {
+  use std::{io::Read, process::{Command, Stdio}};
+
+  use anyhow::Result;
+
+  const SIMPLE: &str = "[{\"name\": \"John Doe\", \"age\": 43, \"phones\": [\"+44 \
+                        1234567\", \"+44 2345678\"]}, {\"name\":\"Alice\"}, \
+                        {\"name\":\"Bob\", \"age\":42}]";
+
+  macro_rules! cli_test {
+    ($inp:expr, $rq_expr:literal, $comp:literal $(,)?) => {{
+      let inp = $inp.stdout(Stdio::piped()).spawn()?;
+      let output = Command::new("cargo")
+        .args(["run", "-q", $rq_expr])
+        .stdin(inp.stdout.unwrap())
+        .stdout(Stdio::piped())
+        .spawn()?;
+      let mut buf = String::new();
+      output.stdout.unwrap().read_to_string(&mut buf)?;
+      assert_eq!($comp, buf.trim());
+      Ok(())
+    }};
+  }
+
+  #[test]
+  fn test_cargo_metadata() -> Result<()> {
+    cli_test!(
+      Command::new("cargo").args(["metadata", "--format-version=1"]),
+      ".packages | map .name",
+      "[ahash, aho-corasick, allocator-api2, anyhow, ariadne, cc, cfg-if, chumsky, \
+       hashbrown, libc, memchr, once_cell, proc-macro2, psm, quote, regex-automata, \
+       regex-syntax, rq, serde, serde_derive, stacker, syn, unicode-ident, \
+       unicode-width, version_check, winapi, winapi-i686-pc-windows-gnu, \
+       winapi-x86_64-pc-windows-gnu, yansi, zerocopy, zerocopy-derive]"
+    )
+  }
+
+  #[test]
+  fn simple_filter() -> Result<()> {
+    cli_test!(
+      Command::new("echo").arg(SIMPLE),
+      "filter (get \"age\" | (>= 42)) | map (|x| { x.name: x.age })",
+      "[{John Doe: 43}, {Bob: 42}]"
+    )
+  }
+
+  #[test]
+  fn simple_fold() -> Result<()> {
+    cli_test!(
+      Command::new("echo").arg(SIMPLE),
+      "map .age | foldl (+) 0",
+      "85"
+    )
+  }
+}
