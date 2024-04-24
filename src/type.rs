@@ -62,6 +62,8 @@ pub enum Type {
   Forall(String, Box<Type>),
   /// A → B
   Arr(Box<Type>, Box<Type>),
+  /// [A]
+  List(Box<Type>),
 }
 
 impl Display for Type {
@@ -74,6 +76,7 @@ impl Display for Type {
       Self::Arr(t1, t2) => write!(f, "{t1} → {t2}"),
       Self::Exist(α̂) => write!(f, "∃{α̂}"),
       Self::Forall(α, t) => write!(f, "∀{α}. {t}"),
+      Self::List(t) => write!(f, "[{t}]"),
     }
   }
 }
@@ -84,6 +87,8 @@ impl Type {
   pub fn forall(v: &str, t: Self) -> Self { Self::Forall(v.to_string(), Box::new(t)) }
 
   pub fn var(v: &str) -> Self { Self::Var(v.to_string()) }
+
+  pub fn list(t: Self) -> Self { Self::List(Box::new(t)) }
 }
 
 impl Type {
@@ -106,6 +111,7 @@ impl Type {
       Self::Arr(box t1, box t2) => {
         Self::arr(t1.subst(to.clone(), from), t2.subst(to, from))
       },
+      Self::List(t) => Self::list(t.subst(to, from)),
     }
   }
 
@@ -121,6 +127,7 @@ impl Type {
           self
         }
       },
+      Self::List(t) => Self::list(t.subst_type(to, from)),
       Self::Forall(α, box t) => Self::forall(&α, t.subst_type(to, from)),
       Self::Arr(box t1, box t2) => {
         Self::arr(t1.subst_type(to, from), t2.subst_type(to, from))
@@ -163,6 +170,8 @@ pub enum Monotype {
   Exist(Exist),
   /// τ → σ
   Arr(Box<Monotype>, Box<Monotype>),
+  /// [τ]
+  List(Box<Monotype>),
 }
 
 impl Monotype {
@@ -174,10 +183,13 @@ impl Monotype {
       Self::Var(α) => Type::Var(α.clone()),
       Self::Exist(α̂) => Type::Exist(*α̂),
       Self::Arr(box τ, box σ) => Type::arr(τ.to_poly(), σ.to_poly()),
+      Self::List(t) => Type::list(t.to_poly()),
     }
   }
 
   fn arr(t1: Self, t2: Self) -> Self { Self::Arr(Box::new(t1), Box::new(t2)) }
+
+  fn list(t: Self) -> Self { Self::List(Box::new(t)) }
 }
 
 impl Type {
@@ -191,6 +203,7 @@ impl Type {
       Self::Var(α) => Some(Monotype::Var(α.clone())),
       Self::Exist(α̂) => Some(Monotype::Exist(*α̂)),
       Self::Arr(t, s) => Some(Monotype::arr(t.to_mono()?, s.to_mono()?)),
+      Self::List(t) => Some(Monotype::list(t.to_mono()?)),
     }
   }
 }

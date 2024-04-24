@@ -9,7 +9,7 @@
 //! The article is readily available [on the arXiv](https://arxiv.org/abs/1306.6032).
 
 use super::{context::{Item, State}, error::{TResult, TypeCheckError}, Exist, Monotype, Type};
-use crate::expr::{self, Const, Expr};
+use crate::expr::{Const, Expr, {self}};
 
 impl Type {
   ///                   A.well_formed_under(Γ)  ≡  Γ ⊢ A
@@ -49,6 +49,8 @@ impl Type {
         t1.well_formed_under(ctx)?;
         t2.well_formed_under(ctx)
       },
+      // ListWF
+      Type::List(t) => t.well_formed_under(ctx),
     }
   }
 
@@ -68,6 +70,9 @@ impl Type {
       (Type::JSON, Type::JSON) => Ok(()),
       // A number is a subtype of a JSON object.
       (Type::Num, Type::Num | Type::JSON) => Ok(()),
+      // Lists are covariant.
+      (Type::List(t1), Type::List(t2)) => t1.subtype_of(state, t2),
+      (Type::List(t1), t2) => t1.subtype_of(state, t2),
       // <:→
       (Type::Arr(a1, a2), Type::Arr(b1, b2)) => {
         b1.subtype_of(state, a1)?; /* Contravariant! */
@@ -166,6 +171,18 @@ impl Exist {
             self.instantiate_l(state, t.clone())
           })
         },
+        // Lists behave like InstLArr.
+        Type::List(box t) => {
+          let α̂ = Exist(state.fresh_mut());
+          state.replace_with(
+            &Item::Unsolved(self),
+            &[
+              Item::Unsolved(α̂),
+              Item::Solved(self, Monotype::list(Monotype::Exist(α̂))),
+            ],
+          );
+          α̂.instantiate_l(state, t.apply_ctx(&state.ctx))
+        },
         _ => Err(TypeCheckError::InstantiationError(self, typ)),
       },
     }
@@ -200,6 +217,18 @@ impl Exist {
           α̂1.instantiate_l(state, t)?;
           α̂2.instantiate_r(state, s.apply_ctx(&state.ctx))
         },
+        // Lists behave like InstRArr.
+        Type::List(box t) => {
+          let α̂ = Exist(state.fresh_mut());
+          state.replace_with(
+            &Item::Unsolved(self),
+            &[
+              Item::Unsolved(α̂),
+              Item::Solved(self, Monotype::list(Monotype::Exist(α̂))),
+            ],
+          );
+          α̂.instantiate_l(state, t.apply_ctx(&state.ctx))
+        },
         // InstRAIIL
         Type::Forall(α, box t) => {
           let fresh_α̂ = Exist(state.fresh_mut());
@@ -225,8 +254,25 @@ impl Expr {
     match self {
       // 1l⇒
       Expr::Const(Const::Num(_)) => Ok(Type::Num),
-      Expr::Const(_) | Expr::Arr(_) | Expr::Obj(_) => Ok(Type::JSON),
+      Expr::Const(_) | Expr::Obj(_) => Ok(Type::JSON),
       Expr::Builtin(b) => expr::var(b.show()).synth(state),
+      // List
+      Expr::Arr(xs) => {
+        if xs.is_empty() {
+          // An empty lists means it can have any type.
+          let α̂ = Exist(state.fresh_mut());
+          state.ctx.push(Item::Unsolved(α̂));
+          Ok(Type::list(Type::Exist(α̂)))
+        } else {
+          // A non-empty list means we infer the first type, and check every
+          // element in the list against it.
+          let type_head = xs[0].synth(state)?;
+          for el in &xs[1..] {
+            el.check(state, &type_head.apply_ctx(&state.ctx))?;
+          }
+          Ok(Type::list(type_head))
+        }
+      },
       // Var
       Expr::Var(v) => match state
         .ctx
@@ -288,7 +334,15 @@ impl Expr {
     // println!("check; ctx: {:?}  e: {:?}  b: {:?}", state.ctx, self, against);
     match (self, against) {
       // 1I
+      (Expr::Const(Const::Num(_)), Type::JSON | Type::Num) => Ok(()),
       (Expr::Const(_), Type::JSON) => Ok(()),
+      // As in `synth`, lists are just treated as JSON lists for now.
+      (Expr::Arr(xs), Type::List(t)) => {
+        for el in xs {
+          el.check(state, t)?;
+        }
+        Ok(())
+      },
       // ∀I
       (_, Type::Forall(α, box t)) => {
         // Type variables are assumed to be unique, so introducing a fresh one

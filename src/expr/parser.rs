@@ -300,18 +300,23 @@ fn p_expr<'a>() -> impl Parser<'a, &'a str, Expr, extra::Err<Rich<'a, char>>> {
         .ignore_then(text::ident().then_ignore(just(".").padded()))
         .then(p_type.clone())
         .map(|(α, t)| Type::forall(α, t));
+      let p_json = text::ident().try_map(
+        move |s: &str, span| {
+          if "json" == &s.to_lowercase() {
+            Ok(Type::JSON)
+          } else {
+            Err(Rich::custom(span, format!("{s}: Invalid type name")))
+          }
+        },
+      );
+      let p_list = p_type.clone().padded()
+        .delimited_by(just('['), just(']'))
+        .map(Type::list);
       let inner = choice((
         p_forall.clone(),            // ∀α. A
+        p_list.clone(),
         just("Num").to(Type::Num),   // Num
-        text::ident().try_map(       // JSON
-          move |s: &str, span| {
-            if "json" == &s.to_lowercase() {
-              Ok(Type::JSON)
-            } else {
-              Err(Rich::custom(span, format!("{s}: Invalid type name")))
-            }
-          },
-        ),
+        p_json,
         text::ident().map(|s: &str| Type::Var(s.to_string())),
         p_type.clone().padded().delimited_by(just('('),just(')'))
       ));

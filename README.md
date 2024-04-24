@@ -178,6 +178,10 @@ The type system looks as follows:
   The type variable `a` can be any valid identifier (that is not already a primitive type)
 
 - Function types: `«Type» → «Type»` or `«Type» -> «Type»`.
+  Function types are contravariant in their first, and covariant in their second argument.
+
+- List types: `[«Type»]`.
+  Lists are covariant.
 
 ### Standard library
 
