@@ -319,7 +319,7 @@ impl Expr {
       //
       Expr::IfThenElse(i, t, e) => {
         i.check(state, &Type::JSON)?;
-        let then_type = t.synth(state)?;
+        let then_type = t.synth(state)?.apply_ctx(&state.ctx);
         e.check(state, &then_type)?;
         Ok(then_type)
       },

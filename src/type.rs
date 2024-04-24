@@ -15,6 +15,7 @@ pub mod expr;
 #[cfg(test)]
 pub mod test;
 
+/// An existential—not yet solved—type variable.
 #[derive(PartialEq, Eq, Debug, Clone, Copy, Hash, PartialOrd, Ord)]
 pub struct Exist(pub usize);
 
