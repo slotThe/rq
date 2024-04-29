@@ -1,5 +1,8 @@
 use std::fmt::{self, Display};
 
+/// Pretty printing of things
+pub mod pretty_print;
+
 /// Ordered floats—scandalous!
 pub mod ord_f64;
 

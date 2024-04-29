@@ -1,30 +1,4 @@
-use super::Builtin;
 use crate::util::style;
-
-impl Builtin {
-  /// Pretty-print a 'Builtin' function.
-  pub fn show(&self) -> &'static str {
-    match self {
-      Builtin::Id => "id",
-      Builtin::BConst => "const",
-      Builtin::Get => "get",
-      Builtin::Set => "set",
-      Builtin::Map => "map",
-      Builtin::Filter => "filter",
-      Builtin::Fold => "fold",
-      Builtin::Add => "+",
-      Builtin::Sub => "-",
-      Builtin::Mul => "*",
-      Builtin::Div => "÷",
-      Builtin::Eq => "=",
-      Builtin::Neq => "≠",
-      Builtin::Le => "<",
-      Builtin::Leq => "≤",
-      Builtin::Ge => ">",
-      Builtin::Geq => "≥",
-    }
-  }
-}
 
 /// A bunch of [`Block`]s!
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
