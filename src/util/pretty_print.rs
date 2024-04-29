@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::util::style;
 
 /// A bunch of [`Block`]s!
@@ -13,10 +15,9 @@ enum Block {
   Fancy(String),
 }
 
-impl Block {
-  /// Pretty-print a single [`Block`].
-  pub fn show(&self) -> String {
-    match self {
+impl Display for Block {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let pp = match self {
       Block::Plain(s) => s.to_string(),
       Block::Fancy(s) => {
         if s.ends_with([',', ';', '.']) {
@@ -26,9 +27,12 @@ impl Block {
           style(s)
         }
       },
-    }
+    };
+    write!(f, "{pp}",)
   }
+}
 
+impl Block {
   pub fn len(&self) -> usize {
     match self {
       Block::Plain(s) => s.len(),
@@ -45,7 +49,7 @@ impl Blocks {
     let render = |line: Vec<Block>| -> String {
       line
         .iter()
-        .map(|b| b.show())
+        .map(|b| format!("{b}"))
         .intersperse(" ".to_string())
         .collect()
     };

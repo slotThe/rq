@@ -255,7 +255,7 @@ impl Expr {
       // 1l⇒
       Expr::Const(Const::Num(_)) => Ok(Type::Num),
       Expr::Const(_) | Expr::Obj(_) => Ok(Type::JSON),
-      Expr::Builtin(b) => expr::var(b.show()).synth(state),
+      Expr::Builtin(b) => expr::var(&format!("{b}")).synth(state),
       // List
       Expr::Arr(xs) => {
         if xs.is_empty() {

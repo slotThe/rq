@@ -26,8 +26,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-  /// Pretty-print a 'Builtin' function.
-  pub fn show(&self) -> &'static str {
+  fn show(&self) -> &'static str {
     match self {
       Builtin::Id => "id",
       Builtin::BConst => "const",
