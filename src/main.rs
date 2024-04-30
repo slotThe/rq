@@ -3,12 +3,10 @@
 #![allow(confusable_idents)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(extend_one)]
 #![feature(iter_intersperse)]
 #![feature(lazy_cell)]
 #![feature(slice_split_once)]
 #![feature(try_blocks)]
-#![feature(type_changing_struct_update)]
 #![allow(rustdoc::invalid_rust_codeblocks)]
 
 mod cli;
