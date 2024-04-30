@@ -11,6 +11,7 @@
 #![feature(type_changing_struct_update)]
 #![allow(rustdoc::invalid_rust_codeblocks)]
 
+mod cli;
 mod eval;
 mod expr;
 mod r#type;
@@ -19,26 +20,63 @@ mod util;
 use std::{collections::BTreeMap, env, io::{self, BufRead, Read, Write}};
 
 use anyhow::Result;
+use cli::{Flatten, Help};
 use eval::stdlib::STDLIB_HELP;
 use expr::{parser::{parse_expr, parse_json}, Expr};
 use r#type::expr::TCExpr;
 
-use crate::{eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::app};
+use crate::{cli::HELP, eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::app, util::flatten::flatten};
 
 fn main() -> Result<()> {
-  let arg = env::args().nth(1);
-  if arg.is_none() || arg == Some("repl".to_string()) {
-    repl()
-  } else {
-    let mut input = String::new();
-    // Try to read from the given file; if that does not work read from stdin.
-    if let Some(mut file) = env::args().nth(2).and_then(|f| std::fs::File::open(f).ok()) {
-      file.read_to_string(&mut input)?;
-    } else {
+  let args = env::args().skip(1).collect::<Vec<String>>();
+  match args.iter().map(|s| s as &str).collect::<Vec<_>>()[..] {
+    ["repl", ..] => repl(),
+    [Help!(), ..] => {
+      println!("{}", *HELP);
+      Ok(())
+    },
+    [Flatten!()] => {
+      let mut input = String::new();
       io::stdin().read_to_string(&mut input)?;
-    }
-    oneshot(&input, &env::args().collect::<Vec<_>>()[1])
+      flatten_io(&input);
+      Ok(())
+    },
+    [Flatten!(), f] => {
+      let mut input = String::new();
+      read_file(&mut input, f)?;
+      flatten_io(&input);
+      Ok(())
+    },
+    [x] => {
+      let mut input = String::new();
+      io::stdin().read_to_string(&mut input)?;
+      oneshot(&input, x)
+    },
+    [x, f] => {
+      let mut input = String::new();
+      read_file(&mut input, f)?;
+      oneshot(&input, x)
+    },
+    _ => {
+      println!("{}", *HELP);
+      Ok(())
+    },
   }
+}
+
+fn flatten_io(input: &str) {
+  if let Some(json) = parse_json(input) {
+    for line in flatten(&json) {
+      println!("{}", line)
+    }
+  }
+}
+
+fn read_file(input: &mut String, f: &str) -> Result<()> {
+  if let Ok(mut file) = std::fs::File::open(f) {
+    file.read_to_string(input)?;
+  }
+  Ok(())
 }
 
 fn repl() -> Result<()> {

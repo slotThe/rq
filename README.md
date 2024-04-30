@@ -186,7 +186,7 @@ The type system looks as follows:
 ### Standard library
 
 - Numerical operators:
-
+n
   ``` agda
   (+)  : JSON → JSON → JSON  -- Also works for string concatenation
   (-)  : JSON → JSON → JSON
@@ -339,5 +339,13 @@ Additionally, the following keywords are available:
                     ),
                 ),
             )
+
+# Additional command line flags
+
+For no reason at all, there are some additional command line flags;
+they ostensibly have nothing to do with `rq`'s main functionality:
+
+  - `--flatten` (`-f`): Flatten the given JSON into a list.
+    Inspired by [gron](https://github.com/tomnomnom/gron).
 
 [^1]: This will be indicated by `SubType ≤ T`.
