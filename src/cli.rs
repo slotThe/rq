@@ -11,7 +11,10 @@ pub static HELP: LazyLock<String> = LazyLock::new(|| {
     &USAGE,
     &OPTIONS,
     "POSITIONAL ARGUMENTS:
-  «EXPR»	A function in rq's expression language.",
+  «EXPR»	A function in rq's expression language.
+  «JSON»        JSON! Can either—as indicated—be piped via stdin,
+  		or given as a file argument.
+  repl          The literal string \"repl\"; starts a REPL.",
   ]
   .into_iter()
   .intersperse("\n\n")
@@ -25,7 +28,8 @@ static USAGE: LazyLock<String> = LazyLock::new(|| {
     "USAGE:
   rq [EXPR] < [JSON]
   rq {} < [JSON]
-  rq {}",
+  rq {}
+  rq repl",
     flatten.usage(),
     help.usage()
   )
