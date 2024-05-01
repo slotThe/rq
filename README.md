@@ -248,11 +248,10 @@ n
 ## REPL
 
 A REPL is provided for getting familiar with the language;
-either call `rq` without arguments,
-or with a `repl` positional argument:
+call `rq` with a `repl` positional argument:
 
 ``` console
-$ rq
+$ rq repl
 λ>
 ```
 
