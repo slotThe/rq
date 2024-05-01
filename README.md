@@ -172,7 +172,7 @@ $ cargo metadata --format-version=1 | rq '.packages | map .name'
 `rq` is a statically typed language with subtyping.[^1]
 The type system looks as follows:
 
-- Primitive types: `JSON` and `Num`, where `Num ≤ JSON`.
+- Primitive types: `JSON`, `Num`, and `Str`, where `Num, Str ≤ JSON`.
 
 - Universal quantification: `∀a. «Type»` or `forall a. «Type»`.
   The type variable `a` can be any valid identifier (that is not already a primitive type)

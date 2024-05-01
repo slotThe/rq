@@ -316,6 +316,7 @@ fn p_expr<'a>() -> impl Parser<'a, &'a str, Expr, extra::Err<Rich<'a, char>>> {
         p_forall.clone(),            // ∀α. A
         p_list.clone(),
         just("Num").to(Type::Num),   // Num
+        just("Str").to(Type::Str),   // Str
         p_json,
         text::ident().map(|s: &str| Type::Var(s.to_string())),
         p_type.clone().padded().delimited_by(just('('),just(')'))

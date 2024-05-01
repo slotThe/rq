@@ -53,6 +53,8 @@ impl Exist {
 pub enum Type {
   /// A number
   Num,
+  /// A string
+  Str,
   /// The JSON black hole
   JSON,
   /// A type variable α
@@ -71,6 +73,7 @@ impl Display for Type {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       Self::Num => write!(f, "Num"),
+      Self::Str => write!(f, "Str"),
       Self::JSON => write!(f, "JSON"),
       Self::Var(α) => write!(f, "{α}"),
       Self::Arr(box Self::Arr(t11, t12), t2) => write!(f, "({t11} → {t12}) → {t2}"),
@@ -98,7 +101,7 @@ impl Type {
   /// Substitute the type variable α with type B in A.
   pub fn subst(self, to: Self, from: &str) -> Self {
     match self {
-      Self::Num | Self::JSON | Self::Exist(_) => self.clone(),
+      Self::Num | Self::Str | Self::JSON | Self::Exist(_) => self.clone(),
       Self::Var(ref α) => {
         if α == from {
           to.clone()
@@ -121,7 +124,7 @@ impl Type {
   /// Substitute type C for B in A.
   pub fn subst_type(self, to: &Self, from: &Self) -> Self {
     match self {
-      Self::Num | Self::JSON | Self::Var(_) | Self::Exist(_) => {
+      Self::Num | Self::Str | Self::JSON | Self::Var(_) | Self::Exist(_) => {
         if self == *from {
           to.clone()
         } else {
@@ -163,7 +166,11 @@ impl Type {
 #[derive(PartialEq, Eq, Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Monotype {
+  /// A number
   Num,
+  /// A string
+  Str,
+  /// The JSON black hole
   JSON,
   /// A type variable α
   Var(String),
@@ -180,6 +187,7 @@ impl Monotype {
   pub fn to_poly(&self) -> Type {
     match self {
       Self::Num => Type::Num,
+      Self::Str => Type::Str,
       Self::JSON => Type::JSON,
       Self::Var(α) => Type::Var(α.clone()),
       Self::Exist(α̂) => Type::Exist(*α̂),
@@ -200,6 +208,7 @@ impl Type {
     match self {
       Self::Forall(_, _) => None,
       Self::Num => Some(Monotype::Num),
+      Self::Str => Some(Monotype::Str),
       Self::JSON => Some(Monotype::JSON),
       Self::Var(α) => Some(Monotype::Var(α.clone())),
       Self::Exist(α̂) => Some(Monotype::Exist(*α̂)),

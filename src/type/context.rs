@@ -60,7 +60,7 @@ impl State {
     }
   }
 
-  /// `state.scoped_around(more, ix, act)` extends the `state` with `more`,
+  /// `state.scoped_around(more, n, act)` extends the `state` with `more`,
   /// executes `act`, and then drops every after and including the `n`th item
   /// from `more`.
   pub fn scoped_around<F: FnOnce(&mut Self) -> TResult<()>>(

@@ -19,6 +19,7 @@ impl Type {
     match self {
       // UnitWF
       Type::Num => Ok(()),
+      Type::Str => Ok(()),
       Type::JSON => Ok(()),
       // UvarWF
       Type::Var(α) => {
@@ -70,6 +71,8 @@ impl Type {
       (Type::JSON, Type::JSON) => Ok(()),
       // A number is a subtype of a JSON object.
       (Type::Num, Type::Num | Type::JSON) => Ok(()),
+      // A string is a subtype of a JSON object.
+      (Type::Str, Type::Str | Type::JSON) => Ok(()),
       // Lists are covariant.
       (Type::List(t1), Type::List(t2)) => t1.subtype_of(state, t2),
       (Type::List(t1), t2) => t1.subtype_of(state, t2),
@@ -254,6 +257,7 @@ impl Expr {
     match self {
       // 1l⇒
       Expr::Const(Const::Num(_)) => Ok(Type::Num),
+      Expr::Const(Const::String(_)) => Ok(Type::Str),
       Expr::Const(_) | Expr::Obj(_) => Ok(Type::JSON),
       Expr::Builtin(b) => expr::var(&format!("{b}")).synth(state),
       // List
