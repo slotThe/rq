@@ -4,7 +4,6 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(iter_intersperse)]
-#![feature(lazy_cell)]
 #![feature(slice_split_once)]
 #![feature(try_blocks)]
 #![allow(rustdoc::invalid_rust_codeblocks)]
