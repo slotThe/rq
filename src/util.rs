@@ -9,6 +9,9 @@ pub mod ord_f64;
 /// Completely flatten the given JSON into a list.
 pub mod flatten;
 
+/// The inverse of flatten.
+pub mod fatten;
+
 /// Pretty print an object of pretty-printable things.
 pub fn fmt_object<S: Display, T: Display>(
   ob: impl IntoIterator<Item = (S, T)>,

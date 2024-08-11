@@ -94,3 +94,10 @@ macro_rules! Flatten {
   };
 }
 pub(crate) use Flatten;
+
+macro_rules! Fatten {
+  () => {
+    "--fatten" | "-F"
+  };
+}
+pub(crate) use Fatten;

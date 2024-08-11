@@ -17,10 +17,11 @@ mod util;
 use std::{collections::BTreeMap, env, io::{self, BufRead, Read, Write}};
 
 use anyhow::Result;
-use cli::{Flatten, Help};
+use cli::{Fatten, Flatten, Help};
 use eval::stdlib::STDLIB_HELP;
 use expr::{parser::{parse_expr, parse_json}, Expr};
 use r#type::expr::TCExpr;
+use util::fatten::fatten;
 
 use crate::{cli::HELP, eval::stdlib::{STDLIB_CTX, STDLIB_TYPES}, expr::app, util::flatten::flatten};
 
@@ -42,6 +43,18 @@ fn main() -> Result<()> {
       let mut input = String::new();
       read_file(&mut input, f)?;
       flatten_io(&input);
+      Ok(())
+    },
+    [Fatten!()] => {
+      let mut input = String::new();
+      io::stdin().read_to_string(&mut input)?;
+      println!("{}", fatten(&input));
+      Ok(())
+    },
+    [Fatten!(), f] => {
+      let mut input = String::new();
+      read_file(&mut input, f)?;
+      println!("{}", fatten(&input));
       Ok(())
     },
     [x] => {
