@@ -186,11 +186,13 @@ mod test {
     cli_test!(
       Command::new("cargo").args(["metadata", "--format-version=1"]),
       ".packages | map .name",
-      "[ahash, aho-corasick, allocator-api2, anyhow, ariadne, cc, cfg-if, chumsky, \
-       hashbrown, libc, memchr, once_cell, proc-macro2, psm, quote, regex-automata, \
-       regex-syntax, rq, serde, serde_derive, stacker, syn, unicode-ident, \
-       unicode-width, version_check, winapi, winapi-i686-pc-windows-gnu, \
-       winapi-x86_64-pc-windows-gnu, yansi, zerocopy, zerocopy-derive]"
+      "[\"ahash\", \"aho-corasick\", \"allocator-api2\", \"anyhow\", \"ariadne\", \
+       \"cc\", \"cfg-if\", \"chumsky\", \"hashbrown\", \"libc\", \"memchr\", \
+       \"once_cell\", \"proc-macro2\", \"psm\", \"quote\", \"regex-automata\", \
+       \"regex-syntax\", \"rq\", \"serde\", \"serde_derive\", \"stacker\", \"syn\", \
+       \"unicode-ident\", \"unicode-width\", \"version_check\", \"winapi\", \
+       \"winapi-i686-pc-windows-gnu\", \"winapi-x86_64-pc-windows-gnu\", \"yansi\", \
+       \"zerocopy\", \"zerocopy-derive\"]"
     )
   }
 
@@ -199,7 +201,7 @@ mod test {
     cli_test!(
       Command::new("echo").arg(SIMPLE),
       "filter (get \"age\" | (>= 42)) | map (|x| { x.name: x.age })",
-      "[{John Doe: 43}, {Bob: 42}]"
+      "[{\"John Doe\": 43}, {\"Bob\": 42}]"
     )
   }
 

@@ -50,7 +50,7 @@ $ cat simple.json | rq 'filter (get "age" | (>= 42)) | map (\x -> { x.name: x.ag
 [{"John Doe":43},{"Bob":42}]
 
 $ cargo metadata --format-version=1 | rq '.packages | map .name'
-[ahash, allocator-api2, anyhow, ariadne, cc, cfg-if, chumsky, hashbrown, libc, once_cell, proc-macro2, psm, quote, rq, stacker, syn, unicode-ident, unicode-width, version_check, winapi, winapi-i686-pc-windows-gnu, winapi-x86_64-pc-windows-gnu, yansi, zerocopy, zerocopy-derive]
+["ahash", "aho-corasick", "allocator-api2", "anyhow", "ariadne", "cc", "cfg-if", "chumsky", "hashbrown", "libc", "memchr", "once_cell", "proc-macro2", "psm", "quote", "regex-automata", "regex-syntax", "rq", "serde", "serde_derive", "stacker", "syn", "unicode-ident", "unicode-width", "version_check", "winapi", "winapi-i686-pc-windows-gnu", "winapi-x86_64-pc-windows-gnu", "yansi", "zerocopy", "zerocopy-derive"]
 ```
 
 ## The expression language

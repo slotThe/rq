@@ -12,11 +12,7 @@ pub fn flatten(json: &Expr) -> Vec<String> {
 fn flatten_worker(json: &Expr, mut prefix: String, res: &mut Vec<String>) {
   match json {
     Expr::Const(c) => {
-      let wrap = match c {
-        Const::String(_) => "\"",
-        _ => "",
-      };
-      prefix.push_str(&format!(" = {wrap}{c}{wrap};"));
+      prefix.push_str(&format!(" = {c};"));
       res.push(prefix);
     },
     Expr::Arr(xs) => {

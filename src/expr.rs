@@ -22,7 +22,7 @@ impl Display for Const {
       Const::Num(n) => write!(f, "{n}"),
       Const::Bool(b) => write!(f, "{b}"),
       Const::Null => write!(f, "null"),
-      Const::String(s) => write!(f, "{s}"),
+      Const::String(s) => write!(f, "\"{s}\""),
     }
   }
 }
