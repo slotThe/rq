@@ -8,9 +8,9 @@ license = "GPL-3.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.79"
-ariadne = "0.4.0"
-chumsky = { git = "https://github.com/zesterer/chumsky", version = "1.0.0-alpha.6" }
+anyhow = "1.0.98"
+ariadne = "0.5.1"
+chumsky = "0.10.0"
 
 [profile.release]
 lto = true
