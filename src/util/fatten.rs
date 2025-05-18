@@ -80,7 +80,7 @@ mod fatten_core {
         JsonMap::Arr(arr) => {
           write!(f, "[")?;
           for el in &arr[0..=arr.len() - 2] {
-            write!(f, "{}, ", el)?;
+            write!(f, "{el}, ")?;
           }
           write!(f, "{}", arr[arr.len() - 1])?;
           write!(f, "]")

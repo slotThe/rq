@@ -77,7 +77,7 @@ fn main() -> Result<()> {
 fn flatten_io(input: &str) {
   if let Some(json) = parse_json(input) {
     for line in flatten(&json) {
-      println!("{}", line)
+      println!("{line}")
     }
   }
 }
@@ -103,10 +103,10 @@ fn repl() -> Result<()> {
   while in_handle.read_line(&mut buffer).is_ok() {
     match &buffer {
       _ if buffer.starts_with(":e ") => {
-        parse_expr(&buffer[3..]).map(|e| writeln!(out_handle, "{}", e));
+        parse_expr(&buffer[3..]).map(|e| writeln!(out_handle, "{e}"));
       },
       _ if buffer.starts_with(":d ") => {
-        parse_expr(&buffer[3..]).map(|e| writeln!(out_handle, "{:?}", e));
+        parse_expr(&buffer[3..]).map(|e| writeln!(out_handle, "{e:?}"));
       },
       _ if buffer.starts_with(":i ") => {
         match STDLIB_HELP.get(&buffer[3..].trim()) {
@@ -127,7 +127,7 @@ fn repl() -> Result<()> {
           let _ = writeln!(out_handle, "{name}	{}", help.wrap("	", 50));
         }),
       _ if buffer.starts_with(":dp ") => {
-        parse_expr(&buffer[4..]).map(|e| writeln!(out_handle, "{:#?}", e));
+        parse_expr(&buffer[4..]).map(|e| writeln!(out_handle, "{e:#?}"));
       },
       _ if buffer.starts_with(":t ") => {
         if let Some(expr) = parse_expr(&buffer[3..]) {
