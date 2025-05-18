@@ -1,31 +1,12 @@
 use std::{collections::BTreeMap, fmt::{self, Display}};
 
 use self::de_bruijn::DBVar;
-use crate::{eval::stdlib::Builtin, r#type::Type, util::{fmt_array, fmt_object, ord_f64::OrdF64}};
+use crate::{eval::stdlib::Builtin, r#type::Type, util::{fmt_array, fmt_object, ord_f64::OrdF64, r#const::Const}};
 
 pub mod de_bruijn;
 pub mod parser;
 #[cfg(test)]
 pub mod test;
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Const {
-  Null,
-  Bool(bool),
-  Num(OrdF64),
-  String(String),
-}
-
-impl Display for Const {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self {
-      Const::Num(n) => write!(f, "{n}"),
-      Const::Bool(b) => write!(f, "{b}"),
-      Const::Null => write!(f, "null"),
-      Const::String(s) => write!(f, "\"{s}\""),
-    }
-  }
-}
 
 /// An expression as the user entered it (containing syntactic sugar).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

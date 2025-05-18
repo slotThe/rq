@@ -9,7 +9,7 @@
 //! The article is readily available [on the arXiv](https://arxiv.org/abs/1306.6032).
 
 use super::{context::{Item, State}, error::{TResult, TypeCheckError}, Exist, Monotype, Type};
-use crate::expr::{Const, Expr, {self}};
+use crate::{expr::{self, Expr}, util::r#const::Const};
 
 impl Type {
   ///                   A.well_formed_under(Γ)  ≡  Γ ⊢ A

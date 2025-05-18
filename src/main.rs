@@ -11,6 +11,8 @@
 mod cli;
 mod eval;
 mod expr;
+mod json;
+mod parser;
 mod r#type;
 mod util;
 
@@ -19,7 +21,8 @@ use std::{collections::BTreeMap, env, io::{self, BufRead, Read, Write}};
 use anyhow::Result;
 use cli::{Fatten, Flatten, Help};
 use eval::stdlib::STDLIB_HELP;
-use expr::{parser::{parse_expr, parse_json}, Expr};
+use expr::{parser::parse_expr, Expr};
+use json::parse_json;
 use r#type::expr::TCExpr;
 use util::fatten::fatten;
 
@@ -162,7 +165,7 @@ fn oneshot(input: &str, expr: &str) -> Result<()> {
     if let Some(json) = parse_json(input) {
       println!(
         "{}",
-        TCExpr::new(app(expr, json), &STDLIB_TYPES)?.eval(&STDLIB_CTX)?
+        TCExpr::new(app(expr, json.into()), &STDLIB_TYPES)?.eval(&STDLIB_CTX)?
       )
     }
   }

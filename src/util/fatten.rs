@@ -40,7 +40,7 @@ mod lhs {
 }
 
 mod rhs {
-  use crate::{expr::Const, util::ord_f64::OrdF64};
+  use crate::util::{ord_f64::OrdF64, r#const::Const};
 
   /// Intermediate form when fattening a flattened JSON structure.
   #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,7 +62,7 @@ mod rhs {
 mod fatten_core {
   use super::*;
 
-  /// A [JsonMap] is a subset of an [Expr] that better fits the problem of
+  /// A [JsonMap] is a subset of a [Json] that better fits the problem of
   /// fattening.
   #[derive(Debug, Clone, PartialEq, Eq)]
   pub enum JsonMap {
@@ -345,7 +345,7 @@ mod parse {
     use Rhs as R;
 
     use super::*;
-    use crate::expr::Const;
+    use crate::util::r#const::Const;
 
     #[test]
     fn parse_test() {

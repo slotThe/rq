@@ -14,7 +14,7 @@
 use std::{collections::BTreeMap, error::Error, fmt::Display};
 
 use self::stdlib::Builtin;
-use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, if_then_else, λ, Const, Expr}, r#type::expr::TCExpr, util::style};
+use crate::{expr::{app, de_bruijn::{DBEnv, DBVar}, if_then_else, λ, Expr}, r#type::expr::TCExpr, util::{r#const::Const, style}};
 
 pub mod stdlib;
 #[cfg(test)]

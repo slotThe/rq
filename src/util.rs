@@ -6,6 +6,9 @@ pub mod pretty_print;
 /// Ordered floats—scandalous!
 pub mod ord_f64;
 
+/// Constant values
+pub mod r#const;
+
 /// Completely flatten the given JSON into a list.
 pub mod flatten;
 
